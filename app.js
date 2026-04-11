@@ -113,8 +113,8 @@ function renderVisita(){
 
   setupPhoto("fFach","photo-fachada","file-fachada","Fachada");
   setupPhoto("fDet","photo-detalle","file-detalle","Detalle");
-  setupPhoto("fCroq1","photo-croq1","file-croq1","Croquis 1");
-  setupPhoto("fCroq2","photo-croq2","file-croq2","Croquis 2");
+  setupCroquis("fCroq1","photo-croq1","file-croq1-cam","file-croq1-file","btn-croq1-cam","btn-croq1-file","Croquis 1");
+  setupCroquis("fCroq2","photo-croq2","file-croq2-cam","file-croq2-file","btn-croq2-cam","btn-croq2-file","Croquis 2");
 
   val("v-obs",cur.obs);$("v-obs").oninput=function(){cur.obs=this.value};
   $("btn-to-guardar").onclick=function(){renderGuardar();go("guardar")};
@@ -126,6 +126,26 @@ function setupPhoto(field,slotId,fileId,label){
   else{slot.className="photo-slot";slot.innerHTML='<span style="color:#bbb"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg></span><span class="pl">'+label+'</span>'}
   slot.onclick=function(){fileEl.click()};
   fileEl.onchange=function(e){var file=e.target.files&&e.target.files[0];if(!file)return;var reader=new FileReader();reader.onload=function(ev){cur[field]=ev.target.result;renderVisita()};reader.readAsDataURL(file)};
+}
+
+function setupCroquis(field,slotId,camFileId,uploadFileId,camBtnId,uploadBtnId,label){
+  var slot=$(slotId);var camFile=$(camFileId);var uploadFile=$(uploadFileId);
+  if(cur[field]){
+    slot.className="photo-slot has";
+    if(cur[field].indexOf("data:application/pdf")===0){
+      slot.innerHTML='<span style="color:#4A8A80"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg></span><span class="pl">PDF cargado</span>';
+    }else{
+      slot.innerHTML='<img src="'+cur[field]+'" alt="">';
+    }
+  }else{
+    slot.className="photo-slot";
+    slot.innerHTML='<span style="color:#bbb"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="20" height="20" rx="2"/><path d="M2 16l5-5 4 4 4-4 7 7"/></svg></span><span class="pl">'+label+'</span>';
+  }
+  $(camBtnId).onclick=function(){camFile.click()};
+  $(uploadBtnId).onclick=function(){uploadFile.click()};
+  function handleFile(e){var file=e.target.files&&e.target.files[0];if(!file)return;var reader=new FileReader();reader.onload=function(ev){cur[field]=ev.target.result;renderVisita()};reader.readAsDataURL(file)}
+  camFile.onchange=handleFile;
+  uploadFile.onchange=handleFile;
 }
 
 // GUARDAR
