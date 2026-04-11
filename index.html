@@ -41,7 +41,7 @@
     <div class="sec" id="exp-list"></div>
   </div>
 
-  <!-- DATOS Step 1 -->
+  <!-- DATOS -->
   <div id="screen-datos" class="hidden">
     <div class="bar"><span>CEE Visitas</span><span style="display:flex;align-items:center;gap:4px"><span class="dot dot-on online-dot"></span><span class="online-label"></span></span></div>
     <div class="hdr2"><button class="bk-btn" data-back="home">←</button><h2 id="datos-title">Nuevo expediente</h2></div>
@@ -50,28 +50,22 @@
     <div class="sec">
       <div id="method-section">
         <div class="stt mt0">Origen de los datos</div>
-        <div class="method-card" data-method="ocr"><div class="m-icon m-icon-green"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M7 10h2M7 14h6"/></svg></div><div><div class="m-tt">OCR — DNI / Catastral</div><div class="m-sub">Escanea y extrae datos</div></div><span class="m-badge">Próximamente</span></div>
-        <div class="method-card" data-method="web"><div class="m-icon m-icon-amber"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/></svg></div><div><div class="m-tt">Desde formulario web</div><div class="m-sub">Importar de joanferibes.com</div></div><span class="m-badge">Próximamente</span></div>
+        <div class="method-card"><div class="m-icon m-icon-green"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M7 10h2M7 14h6"/></svg></div><div><div class="m-tt">OCR — DNI / Catastral</div><div class="m-sub">Escanea y extrae datos</div></div><span class="m-badge">Próximamente</span></div>
+        <div class="method-card"><div class="m-icon m-icon-amber"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/></svg></div><div><div class="m-tt">Desde formulario web</div><div class="m-sub">Importar de joanferibes.com</div></div><span class="m-badge">Próximamente</span></div>
       </div>
       <div class="stt">Datos del expediente</div>
       <div class="field"><label>Nº expediente</label><input id="d-numExp" placeholder="2026/001"></div>
       <div class="field"><label>Nombre cliente</label><input id="d-nombre" placeholder="Nombre completo"></div>
-      <div class="row2">
-        <div class="field"><label>DNI / NIE</label><input id="d-dni" placeholder="12345678A"></div>
-        <div class="field"><label>Teléfono</label><input id="d-telefono" type="tel" placeholder="612 345 678"></div>
-      </div>
+      <div class="row2"><div class="field"><label>DNI / NIE</label><input id="d-dni" placeholder="12345678A"></div><div class="field"><label>Teléfono</label><input id="d-telefono" type="tel" placeholder="612 345 678"></div></div>
       <div class="field"><label>Dirección completa</label><input id="d-direccion" placeholder="Calle, nº — localidad"></div>
-      <div class="row2">
-        <div class="field"><label>Código postal</label><input id="d-cp" placeholder="03750"></div>
-        <div class="field"><label>Municipio</label><select id="d-municipio"><option value="">Seleccionar...</option><option>Pedreguer</option><option>Dénia</option><option>Ondara</option><option>Xàbia</option><option>Teulada</option><option>Gata de Gorgos</option><option>El Verger</option><option>Benitatxell</option><option>Els Poblets</option><option>Otro</option></select></div>
-      </div>
+      <div class="row2"><div class="field"><label>Código postal</label><input id="d-cp" placeholder="03750"></div><div class="field"><label>Municipio</label><select id="d-municipio"><option value="">Seleccionar...</option><option>Pedreguer</option><option>Dénia</option><option>Ondara</option><option>Xàbia</option><option>Teulada</option><option>Gata de Gorgos</option><option>El Verger</option><option>Benitatxell</option><option>Els Poblets</option><option>Otro</option></select></div></div>
       <div class="field hidden" id="d-municipioOtro-wrap"><label>Especificar municipio</label><input id="d-municipioOtro" placeholder="Nombre del municipio"></div>
       <div class="field"><label>Referencia catastral</label><input id="d-refCatastral" placeholder="1234567AB1234S0001XX"></div>
     </div>
     <div class="action-bar"><button class="btn-primary" id="btn-to-visita">Siguiente: visita</button></div>
   </div>
 
-  <!-- VISITA Step 2 -->
+  <!-- VISITA -->
   <div id="screen-visita" class="hidden">
     <div class="bar"><span>CEE Visitas</span><span style="display:flex;align-items:center;gap:4px"><span class="dot dot-on online-dot"></span><span class="online-label"></span></span></div>
     <div class="hdr2"><button class="bk-btn" data-back="datos">←</button><h2>Checklist visita CEE</h2></div>
@@ -84,22 +78,15 @@
       <div class="field hidden" id="v-reformaAnyo-wrap"><label>Año de la reforma</label><input id="v-reformaAnyo" placeholder="2015"></div>
 
       <div class="stt">Envolvente — Muros</div>
-      <div class="field"><label>Tipo de fachada</label><select id="v-fachadaTipo"><option value="">Seleccionar...</option><option>Con posible aislamiento</option><option>Seguramente sin aislamiento</option><option>Sin aislamiento</option></select></div>
       <div class="field"><label>Posibilidad de aislamiento en fachada</label><select id="v-fachadaAislamiento"><option value="">Seleccionar...</option><option>Posiblemente sí</option><option>Posiblemente no</option><option>No lo sabemos</option></select></div>
       <div class="field"><label>Espesor estimado muros (cm)</label><input id="v-murosEspesor" type="number" placeholder="30"></div>
 
       <div class="stt">Envolvente — Huecos</div>
       <div class="field"><label>Material carpintería</label><select id="v-carpinteria"><option value="">Seleccionar...</option><option>PVC</option><option>Aluminio</option><option>Madera</option><option>Hierro</option></select></div>
-      <div class="row2">
-        <div class="field"><label>Acristalamiento</label><select id="v-acristalamiento"><option value="">Seleccionar...</option><option>Simple</option><option>Doble</option><option>Triple</option></select></div>
-        <div class="field"><label>Permeabilidad</label><select id="v-permeabilidad"><option value="">Seleccionar...</option><option>Estanco</option><option>Poco estanco</option></select></div>
-      </div>
+      <div class="row2"><div class="field"><label>Acristalamiento</label><select id="v-acristalamiento"><option value="">Seleccionar...</option><option>Simple</option><option>Doble</option><option>Triple</option></select></div><div class="field"><label>Permeabilidad</label><select id="v-permeabilidad"><option value="">Seleccionar...</option><option>Estanco</option><option>Poco estanco</option></select></div></div>
 
       <div class="stt">Cubierta y suelo</div>
-      <div class="row2">
-        <div class="field"><label>Techo</label><select id="v-techo"><option value="">Seleccionar...</option><option>Cubierta plana</option><option>Cubierta inclinada</option><option>Otra vivienda</option></select></div>
-        <div class="field"><label>Aparent. aislada</label><select id="v-techoAislada"><option value="">Seleccionar...</option><option>Sí</option><option>No</option></select></div>
-      </div>
+      <div class="row2"><div class="field"><label>Techo</label><select id="v-techo"><option value="">Seleccionar...</option><option>Cubierta plana</option><option>Cubierta inclinada</option><option>Otra vivienda</option></select></div><div class="field"><label>Aparent. aislada</label><select id="v-techoAislada"><option value="">Seleccionar...</option><option>Sí</option><option>No</option></select></div></div>
       <div class="field"><label>Suelo</label><select id="v-suelo"><option value="">Seleccionar...</option><option>Forjado sanitario</option><option>Directamente suelo</option><option>Suelo con aislamiento</option><option>Otra vivienda</option></select></div>
 
       <div class="stt">Calefacción</div>
@@ -107,60 +94,38 @@
       <div id="cal-fields">
         <div class="field"><label>Combustible</label><select id="v-calComb"><option value="">Seleccionar...</option><option>Gas</option><option>Gasóleo</option><option>Electricidad</option><option>Aerotermia</option></select></div>
         <div class="field"><label>Distribución</label><select id="v-calDist"><option value="">Seleccionar...</option><option>Radiadores</option><option>Suelo radiante</option><option>Split</option><option>Conductos</option></select></div>
-        <div class="row2">
-          <div class="field"><label>Antigüedad</label><select id="v-calAntig"><option value="">Seleccionar...</option><option>Actual</option><option>Antiguo</option></select></div>
-          <div class="field"><label>% viv. calefactada</label><input id="v-calPct" type="number" placeholder="80"></div>
-        </div>
-        <div class="row2">
-          <div class="field"><label>Potencia (kW)</label><input id="v-calPotencia" placeholder="24"></div>
-          <div class="field"><label>Rendimiento</label><input id="v-calRendimiento" placeholder="Si visible en placa"></div>
-        </div>
+        <div class="row2"><div class="field"><label>Antigüedad</label><select id="v-calAntig"><option value="">Seleccionar...</option><option>Actual</option><option>Antiguo</option></select></div><div class="field"><label>% viv. calefactada</label><input id="v-calPct" type="number" placeholder="80"></div></div>
+        <div class="row2"><div class="field"><label>Potencia (kW)</label><input id="v-calPotencia" placeholder="24"></div><div class="field"><label>Rendimiento</label><input id="v-calRendimiento" placeholder="Si visible en placa"></div></div>
       </div>
 
       <div class="stt">Refrigeración</div>
       <div class="field"><label>Tipo de sistema</label><select id="v-refTipo"><option value="">Seleccionar...</option><option>Split</option><option>Conductos</option><option>No tiene instalada</option></select></div>
       <div id="ref-fields">
         <div class="field"><label>Combustible / fuente</label><select id="v-refComb"><option value="">Seleccionar...</option><option>Electricidad</option><option>Aerotermia</option></select></div>
-        <div class="row2">
-          <div class="field"><label>Antigüedad</label><select id="v-refAntig"><option value="">Seleccionar...</option><option>Actual</option><option>Antiguo</option></select></div>
-          <div class="field"><label>% viv. climatizada</label><input id="v-refPct" type="number" placeholder="60"></div>
-        </div>
-        <div class="row2">
-          <div class="field"><label>Potencia (kW)</label><input id="v-refPotencia" placeholder="3.5"></div>
-          <div class="field"><label>Rendimiento</label><input id="v-refRendimiento" placeholder="Si visible en placa"></div>
-        </div>
+        <div class="row2"><div class="field"><label>Antigüedad</label><select id="v-refAntig"><option value="">Seleccionar...</option><option>Actual</option><option>Antiguo</option></select></div><div class="field"><label>% viv. climatizada</label><input id="v-refPct" type="number" placeholder="60"></div></div>
+        <div class="row2"><div class="field"><label>Potencia (kW)</label><input id="v-refPotencia" placeholder="3.5"></div><div class="field"><label>Rendimiento</label><input id="v-refRendimiento" placeholder="Si visible en placa"></div></div>
       </div>
 
       <div class="stt">ACS</div>
       <div class="field"><label>Tipo de sistema</label><select id="v-acsTipo"><option value="">Seleccionar...</option><option>Caldera</option><option>Termo eléctrico</option><option>Energía solar</option></select></div>
-      <div class="row2">
-        <div class="field"><label>Modalidad</label><select id="v-acsModalidad"><option value="">Seleccionar...</option><option>Instantánea</option><option>Con acumulador</option></select></div>
-        <div class="field"><label>Acumulación</label><select id="v-acsAcum"><option value="">Seleccionar...</option><option>50 L</option><option>80 L</option><option>100 L</option><option>150 L</option><option>200 L</option><option>300 L</option><option>400 L</option></select></div>
-      </div>
+      <div class="row2"><div class="field"><label>Modalidad</label><select id="v-acsModalidad"><option value="">Seleccionar...</option><option>Instantánea</option><option>Con acumulador</option></select></div><div class="field"><label>Acumulación</label><select id="v-acsAcum"><option value="">Seleccionar...</option><option>50 L</option><option>80 L</option><option>100 L</option><option>150 L</option><option>200 L</option><option>300 L</option><option>400 L</option></select></div></div>
       <div class="field"><label>Combustible</label><select id="v-acsComb"><option value="">Seleccionar...</option><option>Gas</option><option>Gasóleo</option><option>Electricidad</option><option>Aerotermia</option><option>Solar</option></select></div>
       <div class="field"><label>ACS mixta</label><div class="ck-row"><div class="ck-box" id="v-acsMixta-ck"></div><span style="font-size:13px">Compartida con calefacción</span></div></div>
 
       <div class="stt">Energías renovables</div>
       <div class="field"><label>Paneles solares</label><div class="ck-row"><div class="ck-box" id="v-ren-ck"></div><span style="font-size:13px;flex:1">Sí, dispone</span></div></div>
-      <div id="ren-fields" class="hidden"><div class="row2">
-        <div class="field"><label>Potencia (kW)</label><input id="v-renPotencia" placeholder="3.5"></div>
-        <div class="field"><label>Año</label><input id="v-renAnyo" placeholder="2022"></div>
-      </div></div>
+      <div id="ren-fields" class="hidden"><div class="row2"><div class="field"><label>Potencia (kW)</label><input id="v-renPotencia" placeholder="3.5"></div><div class="field"><label>Año</label><input id="v-renAnyo" placeholder="2022"></div></div></div>
 
       <div class="stt">Fotos vivienda</div>
       <div class="row2" style="margin-bottom:16px">
-        <input type="file" accept="image/*" capture="environment" id="file-fachada" style="display:none">
-        <div class="photo-slot" id="photo-fachada"></div>
-        <input type="file" accept="image/*" capture="environment" id="file-detalle" style="display:none">
-        <div class="photo-slot" id="photo-detalle"></div>
+        <input type="file" accept="image/*" capture="environment" id="file-fachada" style="display:none"><div class="photo-slot" id="photo-fachada"></div>
+        <input type="file" accept="image/*" capture="environment" id="file-detalle" style="display:none"><div class="photo-slot" id="photo-detalle"></div>
       </div>
 
       <div class="stt">Croquis</div>
       <div class="row2" style="margin-bottom:16px">
-        <input type="file" accept="image/*" capture="environment" id="file-croq1" style="display:none">
-        <div class="photo-slot" id="photo-croq1"></div>
-        <input type="file" accept="image/*,application/pdf" id="file-croq2" style="display:none">
-        <div class="photo-slot" id="photo-croq2"></div>
+        <input type="file" accept="image/*" capture="environment" id="file-croq1" style="display:none"><div class="photo-slot" id="photo-croq1"></div>
+        <input type="file" accept="image/*,application/pdf" id="file-croq2" style="display:none"><div class="photo-slot" id="photo-croq2"></div>
       </div>
 
       <div class="stt">Observaciones</div>
@@ -169,7 +134,7 @@
     <div class="action-bar"><button class="btn-primary" id="btn-to-guardar">Siguiente: guardar</button></div>
   </div>
 
-  <!-- GUARDAR Step 3 -->
+  <!-- GUARDAR -->
   <div id="screen-guardar" class="hidden">
     <div class="bar"><span>CEE Visitas</span><span style="display:flex;align-items:center;gap:4px"><span class="dot dot-on online-dot"></span><span class="online-label"></span></span></div>
     <div class="hdr2"><button class="bk-btn" data-back="visita">←</button><h2>Guardar expediente</h2></div>
@@ -187,7 +152,7 @@
         <div class="sum-row"><span class="sum-label">Tipo</span><span class="sum-val" id="sum-tipo">—</span></div>
         <div class="sum-row hidden" id="sum-reforma-row"><span class="sum-label">Reforma</span><span class="sum-val" id="sum-reforma">—</span></div>
         <div class="sum-divider"></div>
-        <div class="sum-row"><span>Fachada</span><span class="sum-val" id="sum-fachada">—</span></div>
+        <div class="sum-row"><span>Aislamiento fachada</span><span class="sum-val" id="sum-fachada">—</span></div>
         <div class="sum-row"><span>Huecos</span><span class="sum-val" id="sum-huecos">—</span></div>
         <div class="sum-row"><span>Techo</span><span class="sum-val" id="sum-techo">—</span></div>
         <div class="sum-row"><span>Suelo</span><span class="sum-val" id="sum-suelo">—</span></div>
@@ -215,11 +180,10 @@
       <button class="btn-primary" style="margin-bottom:10px" id="btn-save">Guardar expediente</button>
       <button class="btn-secondary" style="margin-bottom:8px" id="btn-gmail-draft">Crear borrador en Gmail (con adjuntos)</button>
       <button class="btn-tertiary" id="btn-preview-email">Previsualizar email</button>
-      <button class="btn-tertiary" id="btn-mailto" style="margin-top:4px">Abrir en app de correo (sin adjuntos)</button>
     </div>
   </div>
 
-  <!-- CONFIG EMAIL -->
+  <!-- CONFIG -->
   <div id="screen-cfgmail" class="hidden">
     <div class="bar"><span>CEE Visitas</span><span style="display:flex;align-items:center;gap:4px"><span class="dot dot-on online-dot"></span><span class="online-label"></span></span></div>
     <div class="hdr2"><button class="bk-btn" data-back="guardar">←</button><h2>Configurar email</h2></div>
@@ -228,14 +192,14 @@
       <div class="field"><label>Email colaborador</label><input id="cfg-email" type="email"></div>
       <div class="field"><label>Nombre colaborador</label><input id="cfg-nombre"></div>
       <div class="field"><label>Firma</label><textarea id="cfg-firma" style="min-height:80px"></textarea></div>
-      <div class="stt">Google Apps Script (para borrador Gmail)</div>
-      <div class="info-box info-amber">Pega aquí la URL del Apps Script que genera borradores en Gmail con adjuntos. Si no la tienes, usa "Abrir en app de correo".</div>
+      <div class="stt">Google Apps Script</div>
+      <div class="info-box info-amber">Pega la URL del Apps Script para crear borradores en Gmail con adjuntos automáticamente.</div>
       <div class="field"><label>URL Apps Script</label><input id="cfg-scriptUrl" placeholder="https://script.google.com/macros/s/..."></div>
     </div>
     <div class="action-bar"><button class="btn-primary" id="btn-save-cfg">Guardar configuración</button></div>
   </div>
 
-  <!-- EMAIL PREVIEW -->
+  <!-- EMAIL -->
   <div id="screen-email" class="hidden">
     <div class="bar"><span>CEE Visitas</span><span style="display:flex;align-items:center;gap:4px"><span class="dot dot-on online-dot"></span><span class="online-label"></span></span></div>
     <div class="hdr2"><button class="bk-btn" data-back="guardar">←</button><h2>Email colaborador</h2></div>
@@ -244,10 +208,7 @@
       <div class="field"><label>Asunto</label><input id="e-asunto" readonly></div>
       <div class="field"><label>Mensaje</label><textarea id="e-body" readonly style="min-height:300px;font-size:12px;line-height:1.5"></textarea></div>
     </div>
-    <div class="action-bar-flex">
-      <button class="btn-secondary btn-flex" id="btn-email-back">Volver</button>
-      <button class="btn-primary btn-flex" id="btn-email-send">Abrir en correo</button>
-    </div>
+    <div class="action-bar"><button class="btn-primary" id="btn-email-back">Volver</button></div>
   </div>
 
 </div>

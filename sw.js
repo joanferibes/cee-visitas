@@ -1,4 +1,4 @@
-var CACHE_NAME = 'cee-visitas-v3';
+var CACHE_NAME = 'cee-visitas-v4';
 var BASE = self.location.pathname.replace('sw.js','');
 var urlsToCache = [
   BASE,
