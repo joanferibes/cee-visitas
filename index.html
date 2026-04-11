@@ -13,86 +13,48 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
 </head>
 <body>
-<div class="app" id="app">
-
-  <!-- TOAST -->
+<div class="app">
   <div class="toast" id="toast"></div>
 
-  <!-- ========== HOME ========== -->
+  <!-- HOME -->
   <div id="screen-home">
-    <div class="bar">
-      <span>CEE Visitas</span>
-      <span style="display:flex;align-items:center;gap:4px"><span class="dot dot-on online-dot"></span><span class="online-label"> Online</span></span>
-    </div>
-    <div class="hdr">
-      <div class="hdr-logo">
-        <div class="logo-box">
-          <div class="logo-text">
-            <span class="logo-t1">JOANFE</span>
-            <span class="logo-t1">RIBES</span>
-            <span class="logo-t2">OFICINA TÈCNICA</span>
-          </div>
-        </div>
-        <div>
-          <h1>CEE Visitas</h1>
-          <p>Certificación energética en campo</p>
-        </div>
-      </div>
-    </div>
+    <div class="bar"><span>CEE Visitas</span><span style="display:flex;align-items:center;gap:4px"><span class="dot dot-on online-dot"></span><span class="online-label"> Online</span></span></div>
+    <div class="hdr"><div class="hdr-logo">
+      <div class="logo-box"><div class="logo-text"><span class="logo-t1">JOANFE</span><span class="logo-t1">RIBES</span><span class="logo-t2">OFICINA TÈCNICA</span></div></div>
+      <div><h1>CEE Visitas</h1><p>Certificación energética en campo</p></div>
+    </div></div>
     <div class="stats">
       <div class="stat"><div class="stat-n" id="stat-p">0</div><div class="stat-l">Pendientes</div></div>
       <div class="stat"><div class="stat-n" id="stat-v">0</div><div class="stat-l">Visitados</div></div>
       <div class="stat"><div class="stat-n" id="stat-e">0</div><div class="stat-l">Enviados</div></div>
     </div>
     <div class="sec">
-      <div class="big-card" id="btn-expedientes">
-        <div class="ic ic-teal"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8M16 17H8M10 9H8"/></svg></div>
-        <div><div class="tt">Expedientes</div><div class="sub">Ver todos los realizados</div></div>
-        <span class="arrow">›</span>
-      </div>
-      <div class="big-card" id="btn-nuevo">
-        <div class="ic ic-blue"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5v14M5 12h14"/><circle cx="12" cy="12" r="10"/></svg></div>
-        <div><div class="tt">Nuevo expediente</div><div class="sub">Crear y realizar visita</div></div>
-        <span class="arrow">›</span>
-      </div>
+      <div class="big-card" id="btn-expedientes"><div class="ic ic-teal"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8M16 17H8M10 9H8"/></svg></div><div><div class="tt">Expedientes</div><div class="sub">Ver todos los realizados</div></div><span class="arrow">›</span></div>
+      <div class="big-card" id="btn-nuevo"><div class="ic ic-blue"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5v14M5 12h14"/><circle cx="12" cy="12" r="10"/></svg></div><div><div class="tt">Nuevo expediente</div><div class="sub">Crear y realizar visita</div></div><span class="arrow">›</span></div>
     </div>
   </div>
 
-  <!-- ========== EXPEDIENTES ========== -->
+  <!-- EXPEDIENTES -->
   <div id="screen-expedientes" class="hidden">
     <div class="bar"><span>CEE Visitas</span><span style="display:flex;align-items:center;gap:4px"><span class="dot dot-on online-dot"></span><span class="online-label"></span></span></div>
     <div class="hdr2"><button class="bk-btn" data-back="home">←</button><h2>Expedientes</h2></div>
     <div class="sec" id="exp-list"></div>
   </div>
 
-  <!-- ========== DATOS (Step 1) ========== -->
+  <!-- DATOS Step 1 -->
   <div id="screen-datos" class="hidden">
     <div class="bar"><span>CEE Visitas</span><span style="display:flex;align-items:center;gap:4px"><span class="dot dot-on online-dot"></span><span class="online-label"></span></span></div>
     <div class="hdr2"><button class="bk-btn" data-back="home">←</button><h2 id="datos-title">Nuevo expediente</h2></div>
-    <!-- Steps -->
-    <div class="steps">
-      <div class="step-dot step-curr">1</div><div class="step-line"></div>
-      <div class="step-dot step-todo">2</div><div class="step-line"></div>
-      <div class="step-dot step-todo">3</div>
-    </div>
+    <div class="steps"><div class="step-dot step-curr">1</div><div class="step-line"></div><div class="step-dot step-todo">2</div><div class="step-line"></div><div class="step-dot step-todo">3</div></div>
     <div class="step-labels"><span class="active">Datos</span><span>Visita</span><span>Guardar</span></div>
     <div class="sec">
       <div id="method-section">
         <div class="stt mt0">Origen de los datos</div>
-        <div class="method-card sel" data-method="ocr">
-          <div class="m-icon m-icon-green"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M7 10h2M7 14h6"/></svg></div>
-          <div><div class="m-tt">OCR — DNI / Catastral</div><div class="m-sub">Escanea y extrae datos</div></div>
-        </div>
-        <div class="method-card" data-method="web">
-          <div class="m-icon m-icon-amber"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/></svg></div>
-          <div><div class="m-tt">Formulario web</div><div class="m-sub">Importar de joanferibes.com</div></div>
-        </div>
-        <div class="method-card" data-method="manual">
-          <div class="m-icon m-icon-purple"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></div>
-          <div><div class="m-tt">Entrada manual</div><div class="m-sub">Rellenar a mano</div></div>
-        </div>
+        <div class="method-card" data-method="ocr"><div class="m-icon m-icon-green"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M7 10h2M7 14h6"/></svg></div><div><div class="m-tt">OCR — DNI / Catastral</div><div class="m-sub">Escanea y extrae datos</div></div><span class="m-badge">Próximamente</span></div>
+        <div class="method-card" data-method="web"><div class="m-icon m-icon-amber"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/></svg></div><div><div class="m-tt">Desde formulario web</div><div class="m-sub">Importar de joanferibes.com</div></div><span class="m-badge">Próximamente</span></div>
       </div>
       <div class="stt">Datos del expediente</div>
+      <div class="field"><label>Nº expediente</label><input id="d-numExp" placeholder="2026/001"></div>
       <div class="field"><label>Nombre cliente</label><input id="d-nombre" placeholder="Nombre completo"></div>
       <div class="row2">
         <div class="field"><label>DNI / NIE</label><input id="d-dni" placeholder="12345678A"></div>
@@ -101,11 +63,7 @@
       <div class="field"><label>Dirección completa</label><input id="d-direccion" placeholder="Calle, nº — localidad"></div>
       <div class="row2">
         <div class="field"><label>Código postal</label><input id="d-cp" placeholder="03750"></div>
-        <div class="field"><label>Municipio</label>
-          <select id="d-municipio"><option value="">Seleccionar...</option>
-            <option>Pedreguer</option><option>Dénia</option><option>Ondara</option><option>Xàbia</option><option>Teulada</option><option>Gata de Gorgos</option><option>El Verger</option><option>Benitatxell</option><option>Els Poblets</option><option>Otro</option>
-          </select>
-        </div>
+        <div class="field"><label>Municipio</label><select id="d-municipio"><option value="">Seleccionar...</option><option>Pedreguer</option><option>Dénia</option><option>Ondara</option><option>Xàbia</option><option>Teulada</option><option>Gata de Gorgos</option><option>El Verger</option><option>Benitatxell</option><option>Els Poblets</option><option>Otro</option></select></div>
       </div>
       <div class="field hidden" id="d-municipioOtro-wrap"><label>Especificar municipio</label><input id="d-municipioOtro" placeholder="Nombre del municipio"></div>
       <div class="field"><label>Referencia catastral</label><input id="d-refCatastral" placeholder="1234567AB1234S0001XX"></div>
@@ -113,73 +71,44 @@
     <div class="action-bar"><button class="btn-primary" id="btn-to-visita">Siguiente: visita</button></div>
   </div>
 
-  <!-- ========== VISITA (Step 2) ========== -->
+  <!-- VISITA Step 2 -->
   <div id="screen-visita" class="hidden">
     <div class="bar"><span>CEE Visitas</span><span style="display:flex;align-items:center;gap:4px"><span class="dot dot-on online-dot"></span><span class="online-label"></span></span></div>
     <div class="hdr2"><button class="bk-btn" data-back="datos">←</button><h2>Checklist visita CEE</h2></div>
-    <div class="steps">
-      <div class="step-dot step-done">✓</div><div class="step-line step-line-done"></div>
-      <div class="step-dot step-curr">2</div><div class="step-line"></div>
-      <div class="step-dot step-todo">3</div>
-    </div>
+    <div class="steps"><div class="step-dot step-done">✓</div><div class="step-line step-line-done"></div><div class="step-dot step-curr">2</div><div class="step-line"></div><div class="step-dot step-todo">3</div></div>
     <div class="step-labels"><span>Datos</span><span class="active">Visita</span><span>Guardar</span></div>
     <div class="sec">
       <div class="stt mt0">Datos generales</div>
-      <div class="field"><label>Tipo de vivienda</label>
-        <select id="v-tipoViv"><option value="">Seleccionar...</option><option>Vivienda individual</option><option>Vivienda unifamiliar</option><option>Local</option></select>
-      </div>
-      <div class="field"><label>Reforma importante</label>
-        <div class="ck-row"><div class="ck-box" id="v-reforma-ck"></div><span style="font-size:13px;flex:1">Sí, existe reforma</span><input id="v-reformaAnyo" style="width:80px" placeholder="Año" class="hidden" id="v-reformaAnyo-wrap"></div>
-        <div class="hidden" id="v-reformaAnyo-wrap" style="margin-top:6px"><input id="v-reformaAnyo" placeholder="Año de la reforma" style="width:120px"></div>
-      </div>
+      <div class="field"><label>Tipo de vivienda</label><select id="v-tipoViv"><option value="">Seleccionar...</option><option>Vivienda individual</option><option>Vivienda unifamiliar</option><option>Local</option></select></div>
+      <div class="field"><label>Reforma importante</label><div class="ck-row"><div class="ck-box" id="v-reforma-ck"></div><span style="font-size:13px;flex:1">Sí, existe reforma</span></div></div>
+      <div class="field hidden" id="v-reformaAnyo-wrap"><label>Año de la reforma</label><input id="v-reformaAnyo" placeholder="2015"></div>
 
       <div class="stt">Envolvente — Muros</div>
-      <div class="field"><label>Tipo de fachada</label>
-        <select id="v-fachadaTipo"><option value="">Seleccionar...</option><option>Aislada</option><option>No aislada</option><option>Parcialmente aislada</option></select>
-      </div>
+      <div class="field"><label>Tipo de fachada</label><select id="v-fachadaTipo"><option value="">Seleccionar...</option><option>Con posible aislamiento</option><option>Seguramente sin aislamiento</option><option>Sin aislamiento</option></select></div>
+      <div class="field"><label>Posibilidad de aislamiento en fachada</label><select id="v-fachadaAislamiento"><option value="">Seleccionar...</option><option>Posiblemente sí</option><option>Posiblemente no</option><option>No lo sabemos</option></select></div>
       <div class="field"><label>Espesor estimado muros (cm)</label><input id="v-murosEspesor" type="number" placeholder="30"></div>
 
       <div class="stt">Envolvente — Huecos</div>
-      <div class="field"><label>Material carpintería</label>
-        <select id="v-carpinteria"><option value="">Seleccionar...</option><option>PVC</option><option>Aluminio</option><option>Madera</option><option>Hierro</option></select>
-      </div>
+      <div class="field"><label>Material carpintería</label><select id="v-carpinteria"><option value="">Seleccionar...</option><option>PVC</option><option>Aluminio</option><option>Madera</option><option>Hierro</option></select></div>
       <div class="row2">
-        <div class="field"><label>Acristalamiento</label>
-          <select id="v-acristalamiento"><option value="">Seleccionar...</option><option>Simple</option><option>Doble</option><option>Triple</option></select>
-        </div>
-        <div class="field"><label>Permeabilidad</label>
-          <select id="v-permeabilidad"><option value="">Seleccionar...</option><option>Estanco</option><option>Poco estanco</option></select>
-        </div>
+        <div class="field"><label>Acristalamiento</label><select id="v-acristalamiento"><option value="">Seleccionar...</option><option>Simple</option><option>Doble</option><option>Triple</option></select></div>
+        <div class="field"><label>Permeabilidad</label><select id="v-permeabilidad"><option value="">Seleccionar...</option><option>Estanco</option><option>Poco estanco</option></select></div>
       </div>
 
       <div class="stt">Cubierta y suelo</div>
       <div class="row2">
-        <div class="field"><label>Techo</label>
-          <select id="v-techo"><option value="">Seleccionar...</option><option>Cubierta plana</option><option>Cubierta inclinada</option><option>Otra vivienda</option></select>
-        </div>
-        <div class="field"><label>Aparent. aislada</label>
-          <select id="v-techoAislada"><option value="">Seleccionar...</option><option>Sí</option><option>No</option></select>
-        </div>
+        <div class="field"><label>Techo</label><select id="v-techo"><option value="">Seleccionar...</option><option>Cubierta plana</option><option>Cubierta inclinada</option><option>Otra vivienda</option></select></div>
+        <div class="field"><label>Aparent. aislada</label><select id="v-techoAislada"><option value="">Seleccionar...</option><option>Sí</option><option>No</option></select></div>
       </div>
-      <div class="field"><label>Suelo</label>
-        <select id="v-suelo"><option value="">Seleccionar...</option><option>Forjado sanitario</option><option>Directamente suelo</option><option>Suelo con aislamiento</option><option>Otra vivienda</option></select>
-      </div>
+      <div class="field"><label>Suelo</label><select id="v-suelo"><option value="">Seleccionar...</option><option>Forjado sanitario</option><option>Directamente suelo</option><option>Suelo con aislamiento</option><option>Otra vivienda</option></select></div>
 
       <div class="stt">Calefacción</div>
-      <div class="field"><label>Tipo de sistema</label>
-        <select id="v-calTipo"><option value="">Seleccionar...</option><option>Caldera</option><option>Eléctrico</option><option>Bomba de calor</option><option>No tiene instalada</option></select>
-      </div>
+      <div class="field"><label>Tipo de sistema</label><select id="v-calTipo"><option value="">Seleccionar...</option><option>Caldera</option><option>Eléctrico</option><option>Bomba de calor</option><option>No tiene instalada</option></select></div>
       <div id="cal-fields">
-        <div class="field"><label>Combustible</label>
-          <select id="v-calComb"><option value="">Seleccionar...</option><option>Gas</option><option>Gasóleo</option><option>Electricidad</option><option>Aerotermia</option></select>
-        </div>
-        <div class="field"><label>Distribución</label>
-          <select id="v-calDist"><option value="">Seleccionar...</option><option>Radiadores</option><option>Suelo radiante</option><option>Split</option><option>Conductos</option></select>
-        </div>
+        <div class="field"><label>Combustible</label><select id="v-calComb"><option value="">Seleccionar...</option><option>Gas</option><option>Gasóleo</option><option>Electricidad</option><option>Aerotermia</option></select></div>
+        <div class="field"><label>Distribución</label><select id="v-calDist"><option value="">Seleccionar...</option><option>Radiadores</option><option>Suelo radiante</option><option>Split</option><option>Conductos</option></select></div>
         <div class="row2">
-          <div class="field"><label>Antigüedad</label>
-            <select id="v-calAntig"><option value="">Seleccionar...</option><option>Actual</option><option>Antiguo</option></select>
-          </div>
+          <div class="field"><label>Antigüedad</label><select id="v-calAntig"><option value="">Seleccionar...</option><option>Actual</option><option>Antiguo</option></select></div>
           <div class="field"><label>% viv. calefactada</label><input id="v-calPct" type="number" placeholder="80"></div>
         </div>
         <div class="row2">
@@ -189,17 +118,11 @@
       </div>
 
       <div class="stt">Refrigeración</div>
-      <div class="field"><label>Tipo de sistema</label>
-        <select id="v-refTipo"><option value="">Seleccionar...</option><option>Split</option><option>Conductos</option><option>No tiene instalada</option></select>
-      </div>
+      <div class="field"><label>Tipo de sistema</label><select id="v-refTipo"><option value="">Seleccionar...</option><option>Split</option><option>Conductos</option><option>No tiene instalada</option></select></div>
       <div id="ref-fields">
-        <div class="field"><label>Combustible / fuente</label>
-          <select id="v-refComb"><option value="">Seleccionar...</option><option>Electricidad</option><option>Aerotermia</option></select>
-        </div>
+        <div class="field"><label>Combustible / fuente</label><select id="v-refComb"><option value="">Seleccionar...</option><option>Electricidad</option><option>Aerotermia</option></select></div>
         <div class="row2">
-          <div class="field"><label>Antigüedad</label>
-            <select id="v-refAntig"><option value="">Seleccionar...</option><option>Actual</option><option>Antiguo</option></select>
-          </div>
+          <div class="field"><label>Antigüedad</label><select id="v-refAntig"><option value="">Seleccionar...</option><option>Actual</option><option>Antiguo</option></select></div>
           <div class="field"><label>% viv. climatizada</label><input id="v-refPct" type="number" placeholder="60"></div>
         </div>
         <div class="row2">
@@ -209,34 +132,20 @@
       </div>
 
       <div class="stt">ACS</div>
-      <div class="field"><label>Tipo de sistema</label>
-        <select id="v-acsTipo"><option value="">Seleccionar...</option><option>Caldera</option><option>Termo eléctrico</option><option>Energía solar</option></select>
-      </div>
+      <div class="field"><label>Tipo de sistema</label><select id="v-acsTipo"><option value="">Seleccionar...</option><option>Caldera</option><option>Termo eléctrico</option><option>Energía solar</option></select></div>
       <div class="row2">
-        <div class="field"><label>Modalidad</label>
-          <select id="v-acsModalidad"><option value="">Seleccionar...</option><option>Instantánea</option><option>Con acumulador</option></select>
-        </div>
-        <div class="field"><label>Acumulación</label>
-          <select id="v-acsAcum"><option value="">Seleccionar...</option><option>50 L</option><option>80 L</option><option>100 L</option><option>150 L</option><option>200 L</option></select>
-        </div>
+        <div class="field"><label>Modalidad</label><select id="v-acsModalidad"><option value="">Seleccionar...</option><option>Instantánea</option><option>Con acumulador</option></select></div>
+        <div class="field"><label>Acumulación</label><select id="v-acsAcum"><option value="">Seleccionar...</option><option>50 L</option><option>80 L</option><option>100 L</option><option>150 L</option><option>200 L</option><option>300 L</option><option>400 L</option></select></div>
       </div>
-      <div class="field"><label>Combustible</label>
-        <select id="v-acsComb"><option value="">Seleccionar...</option><option>Gas</option><option>Gasóleo</option><option>Electricidad</option><option>Aerotermia</option><option>Solar</option></select>
-      </div>
-      <div class="field"><label>ACS mixta</label>
-        <div class="ck-row"><div class="ck-box" id="v-acsMixta-ck"></div><span style="font-size:13px">Compartida con calefacción</span></div>
-      </div>
+      <div class="field"><label>Combustible</label><select id="v-acsComb"><option value="">Seleccionar...</option><option>Gas</option><option>Gasóleo</option><option>Electricidad</option><option>Aerotermia</option><option>Solar</option></select></div>
+      <div class="field"><label>ACS mixta</label><div class="ck-row"><div class="ck-box" id="v-acsMixta-ck"></div><span style="font-size:13px">Compartida con calefacción</span></div></div>
 
       <div class="stt">Energías renovables</div>
-      <div class="field"><label>Paneles solares</label>
-        <div class="ck-row"><div class="ck-box" id="v-ren-ck"></div><span style="font-size:13px;flex:1">Sí, dispone</span></div>
-      </div>
-      <div id="ren-fields" class="hidden">
-        <div class="row2">
-          <div class="field"><label>Potencia (kW)</label><input id="v-renPotencia" placeholder="3.5"></div>
-          <div class="field"><label>Año</label><input id="v-renAnyo" placeholder="2022"></div>
-        </div>
-      </div>
+      <div class="field"><label>Paneles solares</label><div class="ck-row"><div class="ck-box" id="v-ren-ck"></div><span style="font-size:13px;flex:1">Sí, dispone</span></div></div>
+      <div id="ren-fields" class="hidden"><div class="row2">
+        <div class="field"><label>Potencia (kW)</label><input id="v-renPotencia" placeholder="3.5"></div>
+        <div class="field"><label>Año</label><input id="v-renAnyo" placeholder="2022"></div>
+      </div></div>
 
       <div class="stt">Fotos vivienda</div>
       <div class="row2" style="margin-bottom:16px">
@@ -248,7 +157,7 @@
 
       <div class="stt">Croquis</div>
       <div class="row2" style="margin-bottom:16px">
-        <input type="file" accept="image/*,application/pdf" id="file-croq1" style="display:none">
+        <input type="file" accept="image/*" capture="environment" id="file-croq1" style="display:none">
         <div class="photo-slot" id="photo-croq1"></div>
         <input type="file" accept="image/*,application/pdf" id="file-croq2" style="display:none">
         <div class="photo-slot" id="photo-croq2"></div>
@@ -260,25 +169,23 @@
     <div class="action-bar"><button class="btn-primary" id="btn-to-guardar">Siguiente: guardar</button></div>
   </div>
 
-  <!-- ========== GUARDAR (Step 3) ========== -->
+  <!-- GUARDAR Step 3 -->
   <div id="screen-guardar" class="hidden">
     <div class="bar"><span>CEE Visitas</span><span style="display:flex;align-items:center;gap:4px"><span class="dot dot-on online-dot"></span><span class="online-label"></span></span></div>
     <div class="hdr2"><button class="bk-btn" data-back="visita">←</button><h2>Guardar expediente</h2></div>
-    <div class="steps">
-      <div class="step-dot step-done">✓</div><div class="step-line step-line-done"></div>
-      <div class="step-dot step-done">✓</div><div class="step-line step-line-done"></div>
-      <div class="step-dot step-curr">3</div>
-    </div>
+    <div class="steps"><div class="step-dot step-done">✓</div><div class="step-line step-line-done"></div><div class="step-dot step-done">✓</div><div class="step-line step-line-done"></div><div class="step-dot step-curr">3</div></div>
     <div class="step-labels"><span>Datos</span><span>Visita</span><span class="active">Guardar</span></div>
     <div class="sec">
       <div class="ok-banner"><div style="margin-bottom:4px"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#0F6E56" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><path d="M22 4L12 14.01l-3-3"/></svg></div><div class="ok-t">Visita completada</div></div>
 
       <div class="stt mt0">Resumen</div>
       <div class="summary">
+        <div class="sum-row"><span class="sum-label">Nº Expediente</span><span class="sum-val" id="sum-numexp">—</span></div>
         <div class="sum-row"><span class="sum-label">Cliente</span><span class="sum-val" id="sum-nombre">—</span></div>
         <div class="sum-row"><span class="sum-label">Dirección</span><span class="sum-val" id="sum-dir">—</span></div>
         <div class="sum-row"><span class="sum-label">Municipio</span><span class="sum-val" id="sum-muni">—</span></div>
         <div class="sum-row"><span class="sum-label">Tipo</span><span class="sum-val" id="sum-tipo">—</span></div>
+        <div class="sum-row hidden" id="sum-reforma-row"><span class="sum-label">Reforma</span><span class="sum-val" id="sum-reforma">—</span></div>
         <div class="sum-divider"></div>
         <div class="sum-row"><span>Fachada</span><span class="sum-val" id="sum-fachada">—</span></div>
         <div class="sum-row"><span>Huecos</span><span class="sum-val" id="sum-huecos">—</span></div>
@@ -295,55 +202,40 @@
       </div>
 
       <div class="stt">Descargar documentos</div>
-      <div class="att-row" id="dl-checklist">
-        <div class="att-icon att-icon-pdf"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg></div>
-        <div><div class="att-name">Checklist visita PDF</div><div class="att-desc">Todos los datos de la visita</div></div>
-        <span class="att-dl"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg></span>
-      </div>
-      <div class="att-row hidden" id="dl-croq1">
-        <div class="att-icon att-icon-pdf"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg></div>
-        <div><div class="att-name">Croquis 1 PDF</div><div class="att-desc">PDF apaisado</div></div>
-        <span class="att-dl"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg></span>
-      </div>
-      <div class="att-row hidden" id="dl-croq2">
-        <div class="att-icon att-icon-pdf"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg></div>
-        <div><div class="att-name">Croquis 2 PDF</div><div class="att-desc">PDF apaisado</div></div>
-        <span class="att-dl"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg></span>
-      </div>
+      <div class="att-row" id="dl-checklist"><div class="att-icon att-icon-pdf"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg></div><div><div class="att-name">Checklist visita PDF</div><div class="att-desc">Todos los datos</div></div><span class="att-dl">↓</span></div>
+      <div class="att-row hidden" id="dl-croq1"><div class="att-icon att-icon-pdf"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg></div><div><div class="att-name">Croquis 1 PDF</div><div class="att-desc">Apaisado</div></div><span class="att-dl">↓</span></div>
+      <div class="att-row hidden" id="dl-croq2"><div class="att-icon att-icon-pdf"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg></div><div><div class="att-name">Croquis 2 PDF</div><div class="att-desc">Apaisado</div></div><span class="att-dl">↓</span></div>
 
-      <div class="stt">Email colaborador</div>
-      <div class="field"><label>Nº expediente</label><input id="g-numExp" placeholder="2026/001"></div>
+      <div class="stt">Enviar al colaborador</div>
       <div class="summary" style="margin-bottom:6px">
         <div class="sum-row"><span>Enviar a</span><span class="sum-val" id="g-email-to">sin configurar</span></div>
-        <div class="sum-row"><span>Asunto</span><span class="sum-val" id="g-email-asunto" style="font-size:11px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span></div>
       </div>
-      <div style="text-align:right;margin-bottom:16px"><span style="font-size:12px;color:#4A8A80;cursor:pointer;font-weight:500" id="btn-cfg-email">Configurar email</span></div>
+      <div style="text-align:right;margin-bottom:16px"><span style="font-size:12px;color:#4A8A80;cursor:pointer;font-weight:500" id="btn-cfg-email">Configurar email / Apps Script</span></div>
 
       <button class="btn-primary" style="margin-bottom:10px" id="btn-save">Guardar expediente</button>
-      <button class="btn-secondary" id="btn-preview-email">Previsualizar email</button>
-      <button class="btn-tertiary" id="btn-mailto">
-        <span style="display:flex;align-items:center;justify-content:center;gap:8px">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><path d="M22 6l-10 7L2 6"/></svg>
-          Abrir en app de correo
-        </span>
-      </button>
+      <button class="btn-secondary" style="margin-bottom:8px" id="btn-gmail-draft">Crear borrador en Gmail (con adjuntos)</button>
+      <button class="btn-tertiary" id="btn-preview-email">Previsualizar email</button>
+      <button class="btn-tertiary" id="btn-mailto" style="margin-top:4px">Abrir en app de correo (sin adjuntos)</button>
     </div>
   </div>
 
-  <!-- ========== CONFIG EMAIL ========== -->
+  <!-- CONFIG EMAIL -->
   <div id="screen-cfgmail" class="hidden">
     <div class="bar"><span>CEE Visitas</span><span style="display:flex;align-items:center;gap:4px"><span class="dot dot-on online-dot"></span><span class="online-label"></span></span></div>
     <div class="hdr2"><button class="bk-btn" data-back="guardar">←</button><h2>Configurar email</h2></div>
     <div class="sec">
-      <div class="info-box info-blue">Se configura una vez y queda predefinido para todos los expedientes.</div>
+      <div class="info-box info-blue">Se configura una vez y queda predefinido.</div>
       <div class="field"><label>Email colaborador</label><input id="cfg-email" type="email"></div>
       <div class="field"><label>Nombre colaborador</label><input id="cfg-nombre"></div>
       <div class="field"><label>Firma</label><textarea id="cfg-firma" style="min-height:80px"></textarea></div>
+      <div class="stt">Google Apps Script (para borrador Gmail)</div>
+      <div class="info-box info-amber">Pega aquí la URL del Apps Script que genera borradores en Gmail con adjuntos. Si no la tienes, usa "Abrir en app de correo".</div>
+      <div class="field"><label>URL Apps Script</label><input id="cfg-scriptUrl" placeholder="https://script.google.com/macros/s/..."></div>
     </div>
     <div class="action-bar"><button class="btn-primary" id="btn-save-cfg">Guardar configuración</button></div>
   </div>
 
-  <!-- ========== EMAIL PREVIEW ========== -->
+  <!-- EMAIL PREVIEW -->
   <div id="screen-email" class="hidden">
     <div class="bar"><span>CEE Visitas</span><span style="display:flex;align-items:center;gap:4px"><span class="dot dot-on online-dot"></span><span class="online-label"></span></span></div>
     <div class="hdr2"><button class="bk-btn" data-back="guardar">←</button><h2>Email colaborador</h2></div>
@@ -351,7 +243,6 @@
       <div class="field"><label>Para</label><input id="e-to" readonly></div>
       <div class="field"><label>Asunto</label><input id="e-asunto" readonly></div>
       <div class="field"><label>Mensaje</label><textarea id="e-body" readonly style="min-height:300px;font-size:12px;line-height:1.5"></textarea></div>
-      <div class="info-box info-amber">Descarga los PDFs antes, luego adjúntalos al email manualmente.</div>
     </div>
     <div class="action-bar-flex">
       <button class="btn-secondary btn-flex" id="btn-email-back">Volver</button>
@@ -360,17 +251,7 @@
   </div>
 
 </div>
-
 <script src="app.js"></script>
-<script>
-  // Register Service Worker
-  if('serviceWorker' in navigator){
-    navigator.serviceWorker.register('sw.js').then(function(reg){
-      console.log('SW registered');
-    }).catch(function(err){
-      console.log('SW error:',err);
-    });
-  }
-</script>
+<script>if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js')}</script>
 </body>
 </html>
