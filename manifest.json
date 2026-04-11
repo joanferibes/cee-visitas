@@ -1,0 +1,22 @@
+{
+  "name": "CEE Visitas",
+  "short_name": "CEE Visitas",
+  "description": "Certificación energética en campo — Joanfe Ribes Oficina Tècnica",
+  "start_url": "/cee-visitas/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#4A8A80",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
