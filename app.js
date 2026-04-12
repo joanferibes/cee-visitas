@@ -12,7 +12,10 @@ var MUNI=["Pedreguer","Dénia","Ondara","Xàbia","Teulada","Gata de Gorgos","El 
 var exps=[],cur=null,isNew=true;
 var cfg={email:"",nombre:"",firma:"Saludos,\nJuan Felipe Ribes\nArquitecto Técnico — col. 3.184\nTel. 605 875 899",scriptUrl:""};
 
-function mkExp(){return{id:Date.now().toString(),numExp:"",nombre:"",dni:"",telefono:"",direccion:"",cp:"",refCatastral:"",municipio:"",municipioOtro:"",estado:"pendiente",tipoViv:"",reformaImportante:false,reformaAnyo:"",fachadaAislamiento:"",murosEspesor:"",carpinteria:"",acristalamiento:"",permeabilidad:"",techo:"",techoAislada:"",suelo:"",calTipo:"",calComb:"",calDist:"",calAntig:"",calPct:"",calPotencia:"",calRendimiento:"",refTipo:"",refComb:"",refAntig:"",refPct:"",refPotencia:"",refRendimiento:"",acsTipo:"",acsModalidad:"",acsAcum:"",acsComb:"",acsMixta:false,renPaneles:false,renPotencia:"",renAnyo:"",obs:"",fFach:null,fDet:null,fCroq1:null,fCroq2:null,fecha:new Date().toISOString()}}
+// URL del Apps Script del formulario web (para leer solicitudes)
+var FORMULARIO_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyUc9qPWM9kWt5sXLBiiLo6DSh0ArhR_SmbRUmf87KKgWtxN4HxUuPEOZsDP8SZ-1mXtg/exec";
+
+function mkExp(){return{id:Date.now().toString(),numExp:"",nombre:"",dni:"",telefono:"",direccion:"",cp:"",refCatastral:"",municipio:"",municipioOtro:"",estado:"pendiente",tipoViv:"",reformaImportante:false,reformaAnyo:"",fachadaAislamiento:"",murosEspesor:"",carpinteria:"",acristalamiento:"",permeabilidad:"",techo:"",techoAislada:"",suelo:"",calTipo:"",calComb:"",calDist:"",calAntig:"",calPct:"",calPotencia:"",calRendimiento:"",refTipo:"",refComb:"",refAntig:"",refPct:"",refPotencia:"",refRendimiento:"",acsTipo:"",acsModalidad:"",acsAcum:"",acsComb:"",acsMixta:false,renPaneles:false,renPotencia:"",renAnyo:"",obs:"",fFach:null,fDet:null,fCroq1:null,fCroq2:null,fecha:new Date().toISOString(),sheetsId:""}}
 function getMuni(){return cur.municipio==="Otro"?cur.municipioOtro:cur.municipio}
 function fmtDate(d){try{return new Date(d).toLocaleDateString("es-ES")}catch(e){return""}}
 
@@ -27,12 +30,152 @@ function toast(msg){var t=$("toast");t.textContent=msg;t.classList.add("show");s
 
 async function init(){
   try{exps=await dbGetAll();exps.sort(function(a,b){return new Date(b.fecha)-new Date(a.fecha)});var c=await dbGetConfig();if(c)cfg=c}catch(e){console.error(e)}
-  renderHome();go("home");
+  renderHome();
+
+  // Comprobar si hay ?id= en la URL (enlace directo desde email/WhatsApp)
+  var urlParams = new URLSearchParams(window.location.search);
+  var importId = urlParams.get("id");
+  if(importId){
+    // Limpiar la URL para que no se reimporte al recargar
+    window.history.replaceState({}, document.title, window.location.pathname);
+    toast("Cargando solicitud...");
+    importarPorId(importId);
+    return;
+  }
+
+  go("home");
   function updateOnline(){document.querySelectorAll(".online-dot").forEach(function(d){d.className="dot "+(navigator.onLine?"dot-on":"dot-off")});document.querySelectorAll(".online-label").forEach(function(l){l.textContent=navigator.onLine?" Online":" Offline"})}
   window.addEventListener("online",updateOnline);window.addEventListener("offline",updateOnline);updateOnline();
 }
 
-// HOME
+// ======================== IMPORTAR DESDE FORMULARIO WEB ========================
+
+// Importar una solicitud concreta por ID (enlace directo)
+async function importarPorId(sheetsId){
+  try{
+    var url = FORMULARIO_SCRIPT_URL + "?action=detalle&id=" + encodeURIComponent(sheetsId);
+    var resp = await fetch(url);
+    var data = await resp.json();
+    if(data.status === "ok" && data.solicitud){
+      cargarSolicitudEnExp(data.solicitud);
+      toast("Solicitud importada");
+      renderDatos();
+      go("datos");
+    }else{
+      toast("No se encontró la solicitud");
+      go("home");
+    }
+  }catch(e){
+    toast("Error al importar: " + e.message);
+    go("home");
+  }
+}
+
+// Cargar datos de una solicitud del Sheets en un expediente nuevo
+function cargarSolicitudEnExp(sol){
+  cur = mkExp();
+  isNew = true;
+  cur.sheetsId = sol.id || "";
+  cur.nombre = sol.nombre || "";
+  cur.dni = sol.numeroDocumento || "";
+  cur.telefono = (sol.telefono || "").toString();
+  cur.direccion = sol.direccion || "";
+  cur.cp = (sol.cp || "").toString();
+  cur.refCatastral = sol.refCatastral || "";
+  cur.obs = sol.observaciones || "";
+  
+  // Intentar mapear municipio al select
+  var muni = sol.municipio || "";
+  var muniNorm = muni.toUpperCase().trim();
+  var found = false;
+  for(var i = 0; i < MUNI.length; i++){
+    if(MUNI[i].toUpperCase() === muniNorm){
+      cur.municipio = MUNI[i];
+      found = true;
+      break;
+    }
+  }
+  // Mapeos especiales
+  if(!found){
+    if(muniNorm === "BENITACHELL" || muniNorm === "EL POBLE NOU DE BENITATXELL"){
+      cur.municipio = "Benitatxell"; found = true;
+    } else if(muniNorm === "BENIARBEIG" || muniNorm === "LA XARA"){
+      cur.municipio = "Otro"; cur.municipioOtro = muni; found = true;
+    } else if(muniNorm === "JÁVEA" || muniNorm === "JAVEA"){
+      cur.municipio = "Xàbia"; found = true;
+    } else if(muniNorm === "DENIA" || muniNorm === "DÉNIA"){
+      cur.municipio = "Dénia"; found = true;
+    }
+  }
+  if(!found){
+    cur.municipio = "Otro";
+    cur.municipioOtro = muni;
+  }
+}
+
+// Mostrar lista de solicitudes pendientes para importar
+async function mostrarSolicitudesPendientes(){
+  toast("Cargando solicitudes...");
+  try{
+    var url = FORMULARIO_SCRIPT_URL + "?action=listar&estado=pendiente";
+    var resp = await fetch(url);
+    var data = await resp.json();
+    if(data.status !== "ok"){toast("Error al cargar");return}
+    
+    var sols = data.solicitudes || [];
+    if(sols.length === 0){toast("No hay solicitudes pendientes");return}
+    
+    // Mostrar pantalla de selección
+    renderImportList(sols);
+    go("importar");
+  }catch(e){
+    toast("Error: " + e.message);
+  }
+}
+
+function renderImportList(sols){
+  var c = $("import-list");
+  if(!c) return;
+  var h = "";
+  sols.forEach(function(s){
+    var fecha = "";
+    try{ fecha = new Date(s.fechaRecepcion).toLocaleDateString("es-ES")}catch(e){}
+    h += '<div class="exp-item import-item" data-sheets-id="' + (s.id||"") + '" data-idx="' + sols.indexOf(s) + '">';
+    h += '<div class="exp-addr">' + (s.direccion || "Sin dirección") + '</div>';
+    h += '<div class="exp-cli">' + (s.nombre || "Sin nombre") + '</div>';
+    h += '<div class="exp-meta"><span class="badge badge-p">Pendiente</span>';
+    h += '<span class="exp-ref">' + (s.municipio||"") + ' · ' + fecha + '</span></div>';
+    h += '</div>';
+  });
+  c.innerHTML = h;
+  
+  // Guardar referencia a las solicitudes para poder importar
+  c._sols = sols;
+  
+  c.querySelectorAll(".import-item").forEach(function(el){
+    el.onclick = function(){
+      var idx = parseInt(el.getAttribute("data-idx"));
+      var sol = c._sols[idx];
+      cargarSolicitudEnExp(sol);
+      toast("Solicitud importada: " + (sol.nombre||""));
+      renderDatos();
+      go("datos");
+    };
+  });
+}
+
+// Actualizar estado en Sheets cuando se guarda/envía
+async function actualizarEstadoSheets(sheetsId, estado){
+  if(!sheetsId) return;
+  try{
+    var url = FORMULARIO_SCRIPT_URL + "?action=actualizar_estado&id=" + encodeURIComponent(sheetsId) + "&estado=" + encodeURIComponent(estado);
+    await fetch(url);
+  }catch(e){
+    console.log("Error actualizando estado en Sheets: " + e);
+  }
+}
+
+// ======================== HOME ========================
 screens.home=function(){
   $("stat-p").textContent=exps.filter(function(e){return e.estado==="pendiente"}).length;
   $("stat-v").textContent=exps.filter(function(e){return e.estado==="visitado"}).length;
@@ -75,6 +218,15 @@ function renderDatos(){
   $("d-municipio").onchange=function(){cur.municipio=this.value;if(this.value==="Otro"){show("d-municipioOtro-wrap")}else{hide("d-municipioOtro-wrap")}};
   ["numExp","nombre","dni","telefono","direccion","cp","refCatastral","municipioOtro"].forEach(function(f){var el=$("d-"+f);if(el)el.oninput=function(){cur[f]=this.value}});
   $("btn-to-visita").onclick=function(){cur.municipio=val("d-municipio");renderVisita();go("visita")};
+
+  // Botón importar desde formulario web
+  var btnImport = $("btn-import-web");
+  if(btnImport){
+    btnImport.onclick = function(){
+      if(!navigator.onLine){toast("Necesitas conexión a internet");return}
+      mostrarSolicitudesPendientes();
+    };
+  }
 }
 
 // VISITA
@@ -192,6 +344,8 @@ function genBody(){
 async function doSave(){
   if(cur.estado==="pendiente")cur.estado="visitado";
   await dbPut(cur);exps=await dbGetAll();exps.sort(function(a,b){return new Date(b.fecha)-new Date(a.fecha)});
+  // Actualizar estado en Sheets si viene del formulario web
+  if(cur.sheetsId) actualizarEstadoSheets(cur.sheetsId, cur.estado);
   toast("Expediente guardado");setTimeout(function(){go("home");screens.home()},800);
 }
 
@@ -238,14 +392,13 @@ async function dlCroquis(num){
   }catch(e){toast("Error: "+e.message)}
 }
 
-// GMAIL DRAFT - Fixed CORS for Apps Script
+// GMAIL DRAFT
 async function createGmailDraft(){
   if(!cfg.scriptUrl){toast("Configura la URL del Apps Script primero");go("cfgmail");return}
   toast("Creando borrador en Gmail...");
   var payload={to:cfg.email,subject:genAsunto(),body:genBody(),fotoFachada:cur.fFach||"",croquis1:cur.fCroq1||"",croquis2:cur.fCroq2||"",numExp:cur.numExp||"",direccion:cur.direccion||""};
 
   try{
-    // Use fetch with redirect:follow for Apps Script CORS
     var resp=await fetch(cfg.scriptUrl,{
       method:"POST",
       mode:"no-cors",
@@ -253,20 +406,19 @@ async function createGmailDraft(){
       body:JSON.stringify(payload),
       redirect:"follow"
     });
-    // no-cors returns opaque response, we can't read it
-    // But the request does reach Apps Script
-    // Wait a moment then check
     toast("Solicitud enviada. Revisa Borradores en Gmail en unos segundos...");
     cur.estado="enviado";
     await dbPut(cur);exps=await dbGetAll();exps.sort(function(a,b){return new Date(b.fecha)-new Date(a.fecha)});
+    // Actualizar estado en Sheets
+    if(cur.sheetsId) actualizarEstadoSheets(cur.sheetsId, "enviado");
   }catch(e){
-    // Try alternative: form submit approach
     try{
       var form=document.createElement("form");form.method="POST";form.action=cfg.scriptUrl;form.target="_blank";form.style.display="none";
       var input=document.createElement("input");input.name="payload";input.value=JSON.stringify(payload);
       form.appendChild(input);document.body.appendChild(form);form.submit();document.body.removeChild(form);
       toast("Solicitud enviada. Revisa Borradores en Gmail...");
       cur.estado="enviado";await dbPut(cur);exps=await dbGetAll();exps.sort(function(a,b){return new Date(b.fecha)-new Date(a.fecha)});
+      if(cur.sheetsId) actualizarEstadoSheets(cur.sheetsId, "enviado");
     }catch(e2){toast("Error: "+e2.message)}
   }
 }
@@ -281,6 +433,9 @@ function renderCfg(){
   val("cfg-email",cfg.email);val("cfg-nombre",cfg.nombre);val("cfg-firma",cfg.firma);val("cfg-scriptUrl",cfg.scriptUrl||"");
   $("btn-save-cfg").onclick=async function(){cfg.email=val("cfg-email");cfg.nombre=val("cfg-nombre");cfg.firma=val("cfg-firma");cfg.scriptUrl=val("cfg-scriptUrl");await dbPutConfig(cfg);toast("Configuración guardada");setTimeout(function(){go("guardar")},600)};
 }
+
+// IMPORTAR SCREEN
+screens.importar=function(){};
 
 document.addEventListener("DOMContentLoaded",init);
 document.addEventListener("click",function(e){var t=e.target.closest("[data-back]");if(t){go(t.getAttribute("data-back"))}});
