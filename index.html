@@ -41,6 +41,16 @@
     <div class="sec" id="exp-list"></div>
   </div>
 
+  <!-- IMPORTAR DESDE WEB -->
+  <div id="screen-importar" class="hidden">
+    <div class="bar"><span>CEE Visitas</span><span style="display:flex;align-items:center;gap:4px"><span class="dot dot-on online-dot"></span><span class="online-label"></span></span></div>
+    <div class="hdr2"><button class="bk-btn" data-back="datos">←</button><h2>Importar solicitud</h2></div>
+    <div class="sec">
+      <div class="info-box info-blue">Selecciona una solicitud del formulario web para cargar los datos del cliente automáticamente.</div>
+      <div id="import-list" style="margin-top:12px"></div>
+    </div>
+  </div>
+
   <!-- DATOS -->
   <div id="screen-datos" class="hidden">
     <div class="bar"><span>CEE Visitas</span><span style="display:flex;align-items:center;gap:4px"><span class="dot dot-on online-dot"></span><span class="online-label"></span></span></div>
@@ -51,7 +61,7 @@
       <div id="method-section">
         <div class="stt mt0">Origen de los datos</div>
         <div class="method-card"><div class="m-icon m-icon-green"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M7 10h2M7 14h6"/></svg></div><div><div class="m-tt">OCR — DNI / Catastral</div><div class="m-sub">Escanea y extrae datos</div></div><span class="m-badge">Próximamente</span></div>
-        <div class="method-card"><div class="m-icon m-icon-amber"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/></svg></div><div><div class="m-tt">Desde formulario web</div><div class="m-sub">Importar de joanferibes.com</div></div><span class="m-badge">Próximamente</span></div>
+        <div class="method-card" id="btn-import-web" style="cursor:pointer"><div class="m-icon m-icon-amber"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/></svg></div><div><div class="m-tt">Desde formulario web</div><div class="m-sub">Importar de joanferibes.com</div></div><span class="arrow">›</span></div>
       </div>
       <div class="stt">Datos del expediente</div>
       <div class="field"><label>Nº expediente</label><input id="d-numExp" placeholder="2026/001"></div>
