@@ -32,6 +32,9 @@ async function init(){
   try{exps=await dbGetAll();exps.sort(function(a,b){return new Date(b.fecha)-new Date(a.fecha)});var c=await dbGetConfig();if(c)cfg=c}catch(e){console.error(e)}
   renderHome();
 
+  function updateOnline(){document.querySelectorAll(".online-dot").forEach(function(d){d.className="dot "+(navigator.onLine?"dot-on":"dot-off")});document.querySelectorAll(".online-label").forEach(function(l){l.textContent=navigator.onLine?" Online":" Offline"})}
+  window.addEventListener("online",updateOnline);window.addEventListener("offline",updateOnline);updateOnline();
+
   // Comprobar si hay ?id= en la URL (enlace directo desde email/WhatsApp)
   var urlParams = new URLSearchParams(window.location.search);
   var importId = urlParams.get("id");
@@ -44,8 +47,6 @@ async function init(){
   }
 
   go("home");
-  function updateOnline(){document.querySelectorAll(".online-dot").forEach(function(d){d.className="dot "+(navigator.onLine?"dot-on":"dot-off")});document.querySelectorAll(".online-label").forEach(function(l){l.textContent=navigator.onLine?" Online":" Offline"})}
-  window.addEventListener("online",updateOnline);window.addEventListener("offline",updateOnline);updateOnline();
 }
 
 // ======================== IMPORTAR DESDE FORMULARIO WEB ========================
@@ -54,8 +55,7 @@ async function init(){
 async function importarPorId(sheetsId){
   try{
     var url = FORMULARIO_SCRIPT_URL + "?action=detalle&id=" + encodeURIComponent(sheetsId);
-    var resp = await fetch(url);
-    var data = await resp.json();
+    var data = await fetchGAS(url);
     if(data.status === "ok" && data.solicitud){
       cargarSolicitudEnExp(data.solicitud);
       toast("Solicitud importada");
@@ -69,6 +69,38 @@ async function importarPorId(sheetsId){
     toast("Error al importar: " + e.message);
     go("home");
   }
+}
+
+// Fetch para Google Apps Script — sigue redirecciones correctamente
+function fetchGAS(url){
+  return new Promise(function(resolve, reject){
+    // Usar script tag (JSONP-style) como alternativa si fetch falla
+    fetch(url, {redirect:"follow"})
+      .then(function(resp){
+        if(!resp.ok) throw new Error("HTTP " + resp.status);
+        return resp.json();
+      })
+      .then(resolve)
+      .catch(function(err){
+        console.log("fetch falló, probando con script tag:", err);
+        // Fallback: crear un script tag con callback
+        var cbName = "_gasCallback_" + Date.now();
+        var scriptUrl = url + (url.indexOf("?")>-1?"&":"?") + "callback=" + cbName;
+        window[cbName] = function(data){
+          delete window[cbName];
+          document.head.removeChild(script);
+          resolve(data);
+        };
+        var script = document.createElement("script");
+        script.src = scriptUrl;
+        script.onerror = function(){
+          delete window[cbName];
+          document.head.removeChild(script);
+          reject(new Error("No se pudo conectar con el servidor"));
+        };
+        document.head.appendChild(script);
+      });
+  });
 }
 
 // Cargar datos de una solicitud del Sheets en un expediente nuevo
@@ -118,8 +150,7 @@ async function mostrarSolicitudesPendientes(){
   toast("Cargando solicitudes...");
   try{
     var url = FORMULARIO_SCRIPT_URL + "?action=listar&estado=pendiente";
-    var resp = await fetch(url);
-    var data = await resp.json();
+    var data = await fetchGAS(url);
     if(data.status !== "ok"){toast("Error al cargar");return}
     
     var sols = data.solicitudes || [];
