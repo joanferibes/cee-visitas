@@ -1,14 +1,33 @@
 {
-  "name": "CEE Visitas",
+  "name": "CEE Visitas — Certificación energética en campo",
   "short_name": "CEE Visitas",
-  "description": "Certificación energética en campo — Joanfe Ribes Oficina Tècnica",
-  "start_url": "./",
+  "description": "App para realizar visitas de certificación energética de edificios",
+  "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#4A8A80",
-  "orientation": "any",
+  "orientation": "portrait",
   "icons": [
-    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" }
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect fill='%234A8A80' width='192' height='192'/><text x='50%' y='50%' font-size='120' font-weight='bold' text-anchor='middle' dominant-baseline='central' fill='white' font-family='system-ui'>JR</text></svg>",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect fill='%234A8A80' width='512' height='512'/><text x='50%' y='50%' font-size='320' font-weight='bold' text-anchor='middle' dominant-baseline='central' fill='white' font-family='system-ui'>JR</text></svg>",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["utilities", "productivity"],
+  "screenshots": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 540 720'><rect fill='%23f5f5f5' width='540' height='720'/><rect fill='%234A8A80' width='540' height='60'/><text x='270' y='35' font-size='24' font-weight='bold' text-anchor='middle' dominant-baseline='central' fill='white'>CEE Visitas</text></svg>",
+      "sizes": "540x720",
+      "type": "image/svg+xml",
+      "form_factor": "narrow"
+    }
   ]
 }

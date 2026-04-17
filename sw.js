@@ -1,37 +1,51 @@
-var CACHE_NAME = 'cee-visitas-v4';
-var BASE = self.location.pathname.replace('sw.js','');
-var urlsToCache = [
-  BASE,
-  BASE + 'index.html',
-  BASE + 'style.css',
-  BASE + 'app.js',
-  BASE + 'manifest.json',
-  'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js'
+const CACHE_NAME = 'cee-visitas-v4';
+const URLS_TO_CACHE = [
+  '/',
+  '/index.html',
+  '/app_v4.js',
+  '/manifest.json'
 ];
 
 self.addEventListener('install', function(event) {
-  self.skipWaiting();
-  event.waitUntil(caches.open(CACHE_NAME).then(function(cache) { return cache.addAll(urlsToCache); }));
+  event.waitUntil(
+    caches.open(CACHE_NAME).then(function(cache) {
+      return cache.addAll(URLS_TO_CACHE).catch(function(e) {
+        console.log('Error al cachear archivos:', e);
+      });
+    })
+  );
 });
 
 self.addEventListener('fetch', function(event) {
+  if (event.request.method !== 'GET') return;
+  
   event.respondWith(
     caches.match(event.request).then(function(response) {
       if (response) return response;
       return fetch(event.request).then(function(response) {
-        if (!response || response.status !== 200) return response;
+        if (!response || response.status !== 200 || response.type === 'error') return response;
         var responseToCache = response.clone();
-        caches.open(CACHE_NAME).then(function(cache) { cache.put(event.request, responseToCache); });
+        caches.open(CACHE_NAME).then(function(cache) {
+          cache.put(event.request, responseToCache);
+        });
         return response;
-      }).catch(function() { return caches.match(BASE + 'index.html'); });
+      }).catch(function() {
+        return caches.match('/index.html');
+      });
     })
   );
 });
 
 self.addEventListener('activate', function(event) {
   event.waitUntil(
-    caches.keys().then(function(names) {
-      return Promise.all(names.filter(function(n) { return n !== CACHE_NAME; }).map(function(n) { return caches.delete(n); }));
+    caches.keys().then(function(cacheNames) {
+      return Promise.all(
+        cacheNames.map(function(cacheName) {
+          if (cacheName !== CACHE_NAME) {
+            return caches.delete(cacheName);
+          }
+        })
+      );
     })
   );
 });
