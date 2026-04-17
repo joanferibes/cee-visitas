@@ -1,19 +1,33 @@
 /* ============================================================================
- * CEE VISITAS · PWA v6 — RECUPERACIÓN COMPLETA
- * Recupera checklist CE3X real + envío colaborador con borrador Gmail.
- * Añade sincronización Sheets + importación formulario web.
+ * CEE VISITAS · PWA v7
+ * Joanfe Ribes Oficina Tècnica
+ * ---------------------------------------------------------------------------
+ * CAMBIOS sobre v6:
+ *  - Municipios ampliados (Marina Alta completa)
+ *  - "Otro" → modal para introducir nombre personalizado
+ *  - Tipo inmueble: añade "Local"
+ *  - Checklist: quita "Tipo fachada"; antigüedad cal/refri = Actual/Antigua
+ *  - Refrigeración: Tipo = distribución (Splits/Conductos/Fancoil/Combinado)
+ *    y Sistema/energía = Electricidad/Aerotermia
+ *  - Combustible: quita GLP
+ *  - Fotos: elimina capture forzado (funciona en Surface)
+ *  - Nueva "Foto de detalle" opcional (adicional a fachada)
+ *  - Firma del titular en canvas (dedo móvil / lápiz tablet, color azul oscuro)
  * ========================================================================= */
 (function(){
 "use strict";
 
 const DEFAULT_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwPku0mbVvbmkk1j0oSi5gi2picbTmhADFwlJYE2CjCRK5hDmLMc_fW7Jodd3sNPwnPWQ/exec";
 
+// ---------- Municipios (ampliado) ----------
 const MUNIS = ["",
-  "Pedreguer","Dénia","Ondara","Xàbia","Teulada","Gata de Gorgos",
+  "Pedreguer","Dénia","Ondara","Xàbia","Teulada","Moraira","Jesús Pobre","Gata de Gorgos",
   "El Verger","El Poble Nou de Benitatxell","Els Poblets",
-  "Benissa","Calp","Moraira","Jesús Pobre","Orba","Parcent","Senija","Lliber","Otro"
+  "Beniarbeig","Benidoleig","Benimeli","Benissa","Calp",
+  "Orba","Parcent","Senija","Lliber","Xaló","Alcalalí","Sagra","Murla",
+  "Ràfol d'Almúnia","Pego","Oliva",
+  "Otro"
 ];
-
 const MUNI_ALIAS = {
   "benitachell":"El Poble Nou de Benitatxell",
   "benitatxell":"El Poble Nou de Benitatxell",
@@ -21,11 +35,15 @@ const MUNI_ALIAS = {
   "poble nou de benitatxell":"El Poble Nou de Benitatxell",
   "el poble nou":"El Poble Nou de Benitatxell",
   "denia":"Dénia","jabea":"Xàbia","javea":"Xàbia",
-  "el vergel":"El Verger","calpe":"Calp"
+  "el vergel":"El Verger","calpe":"Calp",
+  "jalon":"Xaló","jalón":"Xaló",
+  "rafol de almunia":"Ràfol d'Almúnia",
+  "rafol d'almunia":"Ràfol d'Almúnia",
+  "ràfol de almunia":"Ràfol d'Almúnia"
 };
 
 // ---------- IndexedDB ----------
-const DB_NAME="cee_visitas_v6", DB_VER=1;
+const DB_NAME="cee_visitas_v7", DB_VER=1;
 function openDB(){ return new Promise((res,rej)=>{
   const req=indexedDB.open(DB_NAME,DB_VER);
   req.onupgradeneeded=(e)=>{
@@ -78,7 +96,8 @@ async function getCfg(){
 async function saveCfg(c){ c.key="main"; await dbPut("config",c); }
 
 // ---------- Estado ----------
-const state={currentTab:"pendiente", expCurrent:null, online:navigator.onLine};
+const state={currentTab:"pendiente", expCurrent:null, online:navigator.onLine,
+  firma:{ctx:null, drawing:false, hasDrawn:false}};
 
 // ---------- Helpers ----------
 const $=(id)=>document.getElementById(id);
@@ -90,8 +109,30 @@ function setStatus(on){ state.online=on; const d=$("status-dot"), t=$("status-te
   if(on){ d.className="dot on"; t.textContent="Online"; } else { d.className="dot off"; t.textContent="Offline"; } }
 function esc(s){ return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
 function formatFecha(iso){ if(!iso) return "—"; try{const d=new Date(iso); return d.toLocaleDateString("es-ES")+" "+d.toLocaleTimeString("es-ES",{hour:"2-digit",minute:"2-digit"});}catch(e){return "—";} }
-function matchMuni(m){ if(!m) return ""; const t=String(m).trim().toLowerCase(); if(MUNI_ALIAS[t]) return MUNI_ALIAS[t]; for(const o of MUNIS){ if(o.toLowerCase()===t) return o; } return "Otro"; }
+function matchMuni(m){
+  if(!m) return "";
+  const t=String(m).trim().toLowerCase();
+  if(MUNI_ALIAS[t]) return MUNI_ALIAS[t];
+  for(const o of MUNIS){ if(o && o.toLowerCase()===t) return o; }
+  return "__custom__:" + String(m).trim(); // marca especial: municipio no reconocido
+}
 function normFecha(f){ if(!f) return ""; try{ if(/^\d{4}-\d{2}-\d{2}/.test(f)) return f.slice(0,10); const d=new Date(f); if(!isNaN(d)) return d.toISOString().slice(0,10);}catch(e){} return ""; }
+
+// ---------- Modal municipio "Otro" ----------
+function pedirMunicipioCustom(initial, onOk){
+  const modal=$("modal-muni");
+  const inp=$("muni-custom");
+  inp.value = initial || "";
+  modal.style.display="flex";
+  setTimeout(()=>inp.focus(), 100);
+  function close(){ modal.style.display="none"; $("muni-ok").onclick=null; $("muni-cancel").onclick=null; }
+  $("muni-ok").onclick=()=>{
+    const v = inp.value.trim();
+    close();
+    onOk(v);
+  };
+  $("muni-cancel").onclick=()=>{ close(); onOk(null); };
+}
 
 // ---------- Modelo ----------
 function nuevoExpedienteVacio(){
@@ -104,21 +145,22 @@ function nuevoExpedienteVacio(){
     datos:{
       nombre:"", tipoDocumento:"DNI", numeroDocumento:"",
       telefono:"", email:"",
-      direccion:"", municipio:"", codigoPostal:"",
+      direccion:"", municipio:"", municipioCustom:"", codigoPostal:"",
       referenciaCatastral:"", fechaVisita:"", observaciones:""
     },
     checklist:{
       tipoViv:"", reformaImportante:false, reformaAnyo:"",
-      fachadaTipo:"", posAislamiento:"", murosEspesor:"",
+      posAislamiento:"", murosEspesor:"",
       carpinteria:"", acristalamiento:"", permeabilidad:"",
       techo:"", techoAislada:"", suelo:"",
       calTipo:"", calComb:"", calDist:"", calAntig:"", calPct:"",
       refTipo:"", refComb:"", refAntig:"", refPct:"",
       acsTipo:"", acsModalidad:"", acsAcum:"", acsComb:"", acsMixta:false,
       renPaneles:false, renPotencia:"", renAnyo:"",
+      firmaReq:false,
       observaciones:""
     },
-    fotos:{fachada:"", croq1:"", croq2:""},
+    fotos:{fachada:"", detalle:"", croq1:"", croq2:"", firma:""},
     pendienteSync:false
   };
 }
@@ -209,7 +251,8 @@ async function renderHome(){
   for(const exp of list){
     const badge = exp.estado==="pendiente"?"pend": exp.estado==="visitado"?"vis":"env";
     const dir=exp.datos.direccion||"(sin dirección)";
-    const muni=exp.datos.municipio?", "+exp.datos.municipio:"";
+    const muniName = exp.datos.municipio==="Otro" ? (exp.datos.municipioCustom||"Otro") : exp.datos.municipio;
+    const muni=muniName?", "+muniName:"";
     const nombre=exp.datos.nombre||"(sin nombre)";
     const numExp=exp.numExp?"Exp. "+exp.numExp+" · ":"";
     const fechaStr=exp.datos.fechaVisita?"Visita: "+exp.datos.fechaVisita:("Últ. "+formatFecha(exp.fechaActualizacion));
@@ -262,9 +305,20 @@ async function importarSolicitud(id){
     exp.datos.nombre=s.nombre||""; exp.datos.tipoDocumento=s.tipoDocumento||"DNI";
     exp.datos.numeroDocumento=s.numeroDocumento||""; exp.datos.telefono=s.telefono||"";
     exp.datos.email=s.email||""; exp.datos.direccion=s.direccion||"";
-    exp.datos.municipio=matchMuni(s.municipio); exp.datos.codigoPostal=s.codigoPostal||"";
+    exp.datos.codigoPostal=s.codigoPostal||"";
     exp.datos.referenciaCatastral=s.referenciaCatastral||""; exp.datos.fechaVisita=normFecha(s.fechaVisita);
     exp.datos.observaciones=s.observaciones||"";
+
+    // Gestión municipio: si no se reconoce, guardar como Otro + custom
+    const muni=matchMuni(s.municipio);
+    if(muni.startsWith("__custom__:")){
+      exp.datos.municipio="Otro";
+      exp.datos.municipioCustom=muni.substring(11);
+    } else {
+      exp.datos.municipio=muni;
+      exp.datos.municipioCustom="";
+    }
+
     await guardarExpedienteLocal(exp);
     state.expCurrent=exp;
     pushExpediente(exp).catch(()=>{});
@@ -285,15 +339,41 @@ function rellenarFormDatos(exp){
   const sel=$("f-muni"); sel.innerHTML=MUNIS.map(m=>`<option value="${esc(m)}"${m===d.municipio?" selected":""}>${esc(m||"— seleccionar —")}</option>`).join("");
   $("f-cp").value=d.codigoPostal||""; $("f-refcat").value=d.referenciaCatastral||"";
   $("f-fechavisita").value=d.fechaVisita||""; $("f-obs").value=d.observaciones||"";
+  // Municipio custom
+  if(d.municipio==="Otro"){
+    $("f-muni-custom-row").style.display="block";
+    $("f-muni-custom-inp").value=d.municipioCustom||"";
+  } else {
+    $("f-muni-custom-row").style.display="none";
+  }
 }
 function leerFormDatos(exp){
   exp.numExp=$("f-numexp").value.trim();
   exp.datos.nombre=$("f-nombre").value.trim(); exp.datos.tipoDocumento=$("f-tipodoc").value;
   exp.datos.numeroDocumento=$("f-numdoc").value.trim(); exp.datos.telefono=$("f-tel").value.trim();
   exp.datos.email=$("f-email").value.trim(); exp.datos.direccion=$("f-direccion").value.trim();
-  exp.datos.municipio=$("f-muni").value; exp.datos.codigoPostal=$("f-cp").value.trim();
+  exp.datos.municipio=$("f-muni").value;
+  exp.datos.municipioCustom = exp.datos.municipio==="Otro" ? $("f-muni-custom-inp").value.trim() : "";
+  exp.datos.codigoPostal=$("f-cp").value.trim();
   exp.datos.referenciaCatastral=$("f-refcat").value.trim(); exp.datos.fechaVisita=$("f-fechavisita").value;
   exp.datos.observaciones=$("f-obs").value.trim();
+}
+
+// Cuando cambia el select de municipio
+function onCambiarMuni(){
+  const val=$("f-muni").value;
+  const row=$("f-muni-custom-row");
+  if(val==="Otro"){
+    row.style.display="block";
+    const inp=$("f-muni-custom-inp");
+    if(!inp.value.trim()){
+      pedirMunicipioCustom("", (v)=>{
+        if(v){ inp.value=v; } else { $("f-muni").value=""; row.style.display="none"; }
+      });
+    }
+  } else {
+    row.style.display="none";
+  }
 }
 
 // ---------- Checklist ----------
@@ -302,7 +382,7 @@ function rellenarChecklist(exp){
   $("c-tipoViv").value=c.tipoViv||"";
   $("c-reforma").checked=!!c.reformaImportante; $("c-reformaAnyo").value=c.reformaAnyo||"";
   $("c-reformaAnyo-row").style.display=c.reformaImportante?"block":"none";
-  $("c-fachadaTipo").value=c.fachadaTipo||""; $("c-posAisl").value=c.posAislamiento||"";
+  $("c-posAisl").value=c.posAislamiento||"";
   $("c-murosEspesor").value=c.murosEspesor||"";
   $("c-carpinteria").value=c.carpinteria||""; $("c-acristalamiento").value=c.acristalamiento||"";
   $("c-permeabilidad").value=c.permeabilidad||"";
@@ -319,12 +399,24 @@ function rellenarChecklist(exp){
   $("c-renPaneles").checked=!!c.renPaneles; $("c-renPotencia").value=c.renPotencia||""; $("c-renAnyo").value=c.renAnyo||"";
   $("c-ren-row").style.display=c.renPaneles?"block":"none";
   $("c-obs").value=c.observaciones||"";
-  pintarFoto("fachada",exp.fotos.fachada); pintarFoto("croq1",exp.fotos.croq1); pintarFoto("croq2",exp.fotos.croq2);
+  // Firma
+  $("c-firmaReq").checked = !!c.firmaReq;
+  $("firma-box").style.display = c.firmaReq ? "block" : "none";
+  // Pintar firma guardada en el canvas si existe
+  if(c.firmaReq){
+    setTimeout(() => {
+      initFirmaCanvas();
+      if(exp.fotos.firma){ pintarFirmaEnCanvas(exp.fotos.firma); }
+    }, 50);
+  }
+  pintarFoto("fachada",exp.fotos.fachada);
+  pintarFoto("detalle",exp.fotos.detalle);
+  pintarFoto("croq1",exp.fotos.croq1);
+  pintarFoto("croq2",exp.fotos.croq2);
 }
 function pintarFoto(k,v){
   const p=$(k+"-preview"), i=$(k+"-info");
   if(v){
-    // si es PDF, mostrar icono en vez de imagen
     if(v.startsWith("data:application/pdf")){ p.style.display="none"; i.textContent="✓ PDF guardado"; }
     else{ p.src=v; p.style.display="block"; i.textContent="✓ Guardada"; }
   } else{ p.style.display="none"; i.textContent="—"; }
@@ -333,7 +425,7 @@ function leerChecklist(exp){
   const c=exp.checklist;
   c.tipoViv=$("c-tipoViv").value;
   c.reformaImportante=$("c-reforma").checked; c.reformaAnyo=$("c-reformaAnyo").value.trim();
-  c.fachadaTipo=$("c-fachadaTipo").value; c.posAislamiento=$("c-posAisl").value; c.murosEspesor=$("c-murosEspesor").value;
+  c.posAislamiento=$("c-posAisl").value; c.murosEspesor=$("c-murosEspesor").value;
   c.carpinteria=$("c-carpinteria").value; c.acristalamiento=$("c-acristalamiento").value; c.permeabilidad=$("c-permeabilidad").value;
   c.techo=$("c-techo").value; c.techoAislada=$("c-techoAislada").value; c.suelo=$("c-suelo").value;
   c.calTipo=$("c-calTipo").value; c.calComb=$("c-calComb").value;
@@ -343,12 +435,96 @@ function leerChecklist(exp){
   c.acsTipo=$("c-acsTipo").value; c.acsModalidad=$("c-acsModalidad").value;
   c.acsAcum=$("c-acsAcum").value; c.acsComb=$("c-acsComb").value; c.acsMixta=$("c-acsMixta").checked;
   c.renPaneles=$("c-renPaneles").checked; c.renPotencia=$("c-renPotencia").value; c.renAnyo=$("c-renAnyo").value;
+  c.firmaReq=$("c-firmaReq").checked;
   c.observaciones=$("c-obs").value.trim();
+  // Firma: si está activa, guardar contenido del canvas
+  if(c.firmaReq && state.firma.hasDrawn){
+    const cv=$("firma-canvas");
+    if(cv) exp.fotos.firma = cv.toDataURL("image/png");
+  } else if(!c.firmaReq){
+    exp.fotos.firma = "";
+  }
 }
 function toggleCalef(){ $("c-calef-detalle").style.display=$("c-calTipo").value==="No tiene instalada"?"none":"block"; }
 function toggleRefri(){ $("c-refri-detalle").style.display=$("c-refTipo").value==="No tiene instalada"?"none":"block"; }
 function toggleReforma(){ $("c-reformaAnyo-row").style.display=$("c-reforma").checked?"block":"none"; }
 function toggleRen(){ $("c-ren-row").style.display=$("c-renPaneles").checked?"block":"none"; }
+function toggleFirma(){
+  const on=$("c-firmaReq").checked;
+  $("firma-box").style.display=on?"block":"none";
+  if(on){ setTimeout(()=>initFirmaCanvas(), 50); }
+}
+
+// ---------- Firma (canvas) ----------
+function initFirmaCanvas(){
+  const cv=$("firma-canvas");
+  if(!cv) return;
+  // Dimensionar canvas a píxeles reales
+  const rect = cv.getBoundingClientRect();
+  if(rect.width === 0) return; // no visible aún
+  const dpr = window.devicePixelRatio || 1;
+  cv.width = rect.width * dpr;
+  cv.height = rect.height * dpr;
+  const ctx = cv.getContext("2d");
+  ctx.scale(dpr, dpr);
+  ctx.strokeStyle = "#0A2A6B"; // azul oscuro tipo boli
+  ctx.lineWidth = 2.2;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  state.firma.ctx = ctx;
+  state.firma.drawing = false;
+  state.firma.hasDrawn = false;
+  $("firma-info").textContent = "—";
+
+  // Eventos unificados para mouse + touch + pen
+  cv.onpointerdown = (e)=>{
+    e.preventDefault();
+    state.firma.drawing = true;
+    const p = puntoCanvas(cv,e);
+    ctx.beginPath();
+    ctx.moveTo(p.x, p.y);
+  };
+  cv.onpointermove = (e)=>{
+    if(!state.firma.drawing) return;
+    e.preventDefault();
+    const p = puntoCanvas(cv,e);
+    ctx.lineTo(p.x, p.y);
+    ctx.stroke();
+    state.firma.hasDrawn = true;
+    $("firma-info").textContent = "✓ Firma capturada";
+  };
+  cv.onpointerup = cv.onpointerleave = cv.onpointercancel = ()=>{
+    state.firma.drawing = false;
+  };
+}
+
+function puntoCanvas(cv, e){
+  const rect = cv.getBoundingClientRect();
+  return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+}
+
+function clearFirma(){
+  const cv=$("firma-canvas"); if(!cv) return;
+  const ctx = state.firma.ctx; if(!ctx) return;
+  ctx.clearRect(0,0,cv.width,cv.height);
+  state.firma.hasDrawn = false;
+  $("firma-info").textContent = "—";
+  if(state.expCurrent) state.expCurrent.fotos.firma = "";
+}
+
+function pintarFirmaEnCanvas(dataUrl){
+  const cv=$("firma-canvas"); if(!cv) return;
+  const ctx = cv.getContext("2d");
+  const img = new Image();
+  img.onload = ()=>{
+    const rect = cv.getBoundingClientRect();
+    ctx.clearRect(0,0,cv.width,cv.height);
+    ctx.drawImage(img, 0, 0, rect.width, rect.height);
+    state.firma.hasDrawn = true;
+    $("firma-info").textContent = "✓ Firma guardada";
+  };
+  img.src = dataUrl;
+}
 
 // ---------- Fotos ----------
 function setupFotoInput(btnId,inputId,key){
@@ -371,6 +547,8 @@ function setupFotoInput(btnId,inputId,key){
     state.expCurrent.fotos[key]=url; pintarFoto(key,url);
     await guardarExpedienteLocal(state.expCurrent);
     toast("Imagen guardada");
+    // Limpiar valor del input para que el onchange funcione si se elige la misma foto otra vez
+    e.target.value = "";
   };
 }
 function redimensionar(file,maxDim,q){ return new Promise((resolve)=>{
@@ -426,22 +604,22 @@ async function generateChecklistPDF(exp){
   }
 
   const d=exp.datos, c=exp.checklist;
+  const muniStr = d.municipio==="Otro" ? (d.municipioCustom||"Otro") : d.municipio;
 
   title("DATOS GENERALES");
   row("Dirección",(d.direccion||"")+(d.codigoPostal?", "+d.codigoPostal:""));
-  row("Municipio",d.municipio);
+  row("Municipio",muniStr);
   row("Cliente",d.nombre);
   row(d.tipoDocumento||"DNI",d.numeroDocumento);
   row("Teléfono",d.telefono);
   row("Email",d.email);
   row("Ref. catastral",d.referenciaCatastral);
   row("Fecha visita",d.fechaVisita);
-  row("Tipo vivienda",c.tipoViv);
+  row("Tipo inmueble",c.tipoViv);
   row("Reforma importante", c.reformaImportante?("Sí — Año "+(c.reformaAnyo||"?")):"No");
   y+=3;
 
   title("ENVOLVENTE — MUROS / FACHADA");
-  row("Tipo fachada",c.fachadaTipo);
   row("Posibilidad aislamiento",c.posAislamiento);
   row("Espesor muros",c.murosEspesor?c.murosEspesor+" cm":"");
   y+=2;
@@ -463,7 +641,7 @@ async function generateChecklistPDF(exp){
     row("Sistema",c.calTipo);
     row("Combustible",c.calComb);
     row("Distribución",c.calDist);
-    row("Antigüedad (años)",c.calAntig);
+    row("Antigüedad",c.calAntig);
     row("% vivienda calefactada",c.calPct?c.calPct+" %":"");
   }
   y+=2;
@@ -471,9 +649,9 @@ async function generateChecklistPDF(exp){
   title("REFRIGERACIÓN");
   if(c.refTipo==="No tiene instalada"){ row("Sistema","No tiene instalada"); }
   else{
-    row("Sistema",c.refTipo);
-    row("Combustible",c.refComb);
-    row("Antigüedad (años)",c.refAntig);
+    row("Tipo (distribución)",c.refTipo);
+    row("Sistema / energía",c.refComb);
+    row("Antigüedad",c.refAntig);
     row("% vivienda climatizada",c.refPct?c.refPct+" %":"");
   }
   y+=2;
@@ -499,6 +677,19 @@ async function generateChecklistPDF(exp){
     doc.setFontSize(9); doc.setFont("helvetica","normal");
     const lines=doc.splitTextToSize(c.observaciones,pw);
     doc.text(lines,lm,y);
+    y+=5*lines.length + 2;
+  }
+
+  // Firma
+  if(c.firmaReq && exp.fotos.firma){
+    if(y>220){ doc.addPage(); y=20; }
+    title("FIRMA DEL TITULAR");
+    try{
+      doc.addImage(exp.fotos.firma,"PNG",lm,y,80,30);
+      y+=32;
+      doc.setFontSize(8); doc.setFont("helvetica","italic");
+      doc.text(d.nombre + "  ·  " + new Date().toLocaleDateString("es-ES"), lm, y);
+    }catch(e){}
   }
 
   return doc.output("datauristring");
@@ -513,6 +704,7 @@ async function abrirPantallaEmail(){
   const numExp=exp.numExp?exp.numExp+"_":"";
   $("e-asunto").value="CEE "+numExp+dir;
   const c=exp.checklist;
+  const muniStr = exp.datos.municipio==="Otro" ? (exp.datos.municipioCustom||"Otro") : exp.datos.municipio;
   const cuerpo=
 `Hola,
 
@@ -522,30 +714,30 @@ DATOS DEL INMUEBLE
 - Expediente: ${exp.numExp||"—"}
 - Cliente: ${exp.datos.nombre}
 - Dirección: ${exp.datos.direccion}
-- Municipio: ${exp.datos.municipio} (CP ${exp.datos.codigoPostal})
+- Municipio: ${muniStr} (CP ${exp.datos.codigoPostal})
 - Ref. catastral: ${exp.datos.referenciaCatastral}
 - Teléfono: ${exp.datos.telefono}
 - Fecha de visita: ${exp.datos.fechaVisita}
-- Tipo vivienda: ${c.tipoViv}
+- Tipo inmueble: ${c.tipoViv}
 ${c.reformaImportante?"- Reforma importante: Sí (año "+(c.reformaAnyo||"?")+")":""}
 
 ENVOLVENTE
-- Fachada: ${c.fachadaTipo||"—"} (aislamiento posible: ${c.posAislamiento||"—"})
+- Aislamiento posible en fachada: ${c.posAislamiento||"—"}
 - Espesor muros: ${c.murosEspesor||"—"} cm
 - Carpintería: ${c.carpinteria||"—"} · Acristalamiento: ${c.acristalamiento||"—"} · Permeabilidad: ${c.permeabilidad||"—"}
 - Techo: ${c.techo||"—"}${c.techoAislada?" ("+c.techoAislada+")":""}
 - Suelo: ${c.suelo||"—"}
 
 INSTALACIONES
-- Calefacción: ${c.calTipo||"—"}${c.calTipo&&c.calTipo!=="No tiene instalada"?` · ${c.calComb||""} · ${c.calPct||0}% vivienda`:""}
-- Refrigeración: ${c.refTipo||"—"}${c.refTipo&&c.refTipo!=="No tiene instalada"?` · ${c.refComb||""} · ${c.refPct||0}% vivienda`:""}
+- Calefacción: ${c.calTipo||"—"}${c.calTipo&&c.calTipo!=="No tiene instalada"?` · ${c.calComb||""} · ${c.calDist||""} · ${c.calAntig||""} · ${c.calPct||0}% vivienda`:""}
+- Refrigeración: ${c.refTipo||"—"}${c.refTipo&&c.refTipo!=="No tiene instalada"?` · ${c.refComb||""} · ${c.refAntig||""} · ${c.refPct||0}% vivienda`:""}
 - ACS: ${c.acsTipo||"—"}${c.acsModalidad?" · "+c.acsModalidad:""}${c.acsAcum?" · "+c.acsAcum:""}${c.acsComb?" · "+c.acsComb:""}${c.acsMixta?" · mixta con calefacción":""}
 - Renovables: ${c.renPaneles?"Paneles "+(c.renPotencia||"?")+" kW ("+(c.renAnyo||"?")+")":"No dispone"}
 
 OBSERVACIONES
 ${c.observaciones||"—"}
 
-Se adjuntan: checklist en PDF, foto de fachada y croquis.
+Se adjuntan: checklist en PDF, fotos y croquis${c.firmaReq?", y firma del titular":""}.
 
 ${cfg.firma||""}`;
   $("e-body").value=cuerpo;
@@ -571,8 +763,10 @@ async function crearBorradorGmail(){
       direccion:exp.datos.direccion||"",
       checklistPdf:pdfDataUrl,
       fotoFachada:exp.fotos.fachada||"",
+      fotoDetalle:exp.fotos.detalle||"",
       croquis1:exp.fotos.croq1||"",
-      croquis2:exp.fotos.croq2||""
+      croquis2:exp.fotos.croq2||"",
+      firma:exp.fotos.firma||""
     });
     hideSync();
     toast("✓ Borrador creado en Gmail · revisa borradores");
@@ -587,7 +781,6 @@ async function crearBorradorGmail(){
   }
 }
 
-// POST al Apps Script vía formulario + iframe oculto (evita preflight CORS)
 function enviarBorradorPostForm(payload){
   return new Promise(async (resolve,reject)=>{
     const url=await backendUrl();
@@ -656,7 +849,7 @@ async function testConexion(){
 
 // ---------- Init ----------
 async function init(){
-  if("serviceWorker" in navigator){ try{ await navigator.serviceWorker.register("sw.js?v=6"); }catch(e){} }
+  if("serviceWorker" in navigator){ try{ await navigator.serviceWorker.register("sw.js?v=7"); }catch(e){} }
   document.querySelectorAll("[data-go]").forEach(b=>{ b.onclick=()=>go(b.getAttribute("data-go")); });
   document.querySelectorAll(".tab").forEach(t=>{ t.onclick=()=>{
     document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));
@@ -678,6 +871,13 @@ async function init(){
     await guardarExpedienteLocal(state.expCurrent);
     pushExpediente(state.expCurrent).catch(()=>{});
     go("checklist");
+    // Inicializar canvas firma si está activada
+    if(state.expCurrent.checklist.firmaReq){
+      setTimeout(()=>{
+        initFirmaCanvas();
+        if(state.expCurrent.fotos.firma) pintarFirmaEnCanvas(state.expCurrent.fotos.firma);
+      },100);
+    }
   };
   $("btn-guardar").onclick=async()=>{
     if(!state.expCurrent) return;
@@ -700,8 +900,14 @@ async function init(){
   $("c-calTipo").onchange=toggleCalef;
   $("c-refTipo").onchange=toggleRefri;
   $("c-renPaneles").onchange=toggleRen;
+  $("c-firmaReq").onchange=toggleFirma;
+  $("btn-firma-clear").onclick=clearFirma;
+
+  // Cambio de municipio
+  $("f-muni").onchange=onCambiarMuni;
 
   setupFotoInput("btn-foto-fachada","inp-fachada","fachada");
+  setupFotoInput("btn-foto-detalle","inp-detalle","detalle");
   setupFotoInput("btn-croquis-1","inp-croq1","croq1");
   setupFotoInput("btn-croquis-2","inp-croq2","croq2");
 

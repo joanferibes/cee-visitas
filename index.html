@@ -9,7 +9,7 @@
 <title>CEE Visitas · Joanfe Ribes</title>
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
-<link rel="stylesheet" href="style.css?v=6">
+<link rel="stylesheet" href="style.css?v=7">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
@@ -17,6 +17,19 @@
 
 <div class="toast" id="toast"></div>
 <div class="sync-bar" id="sync-bar"><span id="sync-text">Sincronizando…</span></div>
+
+<!-- Modal municipio personalizado -->
+<div class="modal" id="modal-muni" style="display:none">
+  <div class="modal-box">
+    <h3>Municipio personalizado</h3>
+    <p class="muted">Has seleccionado "Otro". Introduce el nombre del municipio:</p>
+    <input type="text" id="muni-custom" placeholder="ej. Teulada">
+    <div class="modal-btns">
+      <button class="btn-secondary" id="muni-cancel">Cancelar</button>
+      <button class="btn-primary" id="muni-ok">Aceptar</button>
+    </div>
+  </div>
+</div>
 
 <!-- HOME -->
 <section class="screen active" id="screen-home">
@@ -41,7 +54,7 @@
   </div>
 </section>
 
-<!-- NUEVO origen -->
+<!-- NUEVO -->
 <section class="screen" id="screen-nuevo">
   <div class="bar"><button class="back" data-go="home">‹</button><span>Nuevo expediente</span></div>
   <div class="content">
@@ -99,6 +112,10 @@
         <div><label>Municipio</label><select id="f-muni"></select></div>
         <div><label>Cód. Postal</label><input type="text" id="f-cp" inputmode="numeric"></div>
       </div>
+      <div id="f-muni-custom-row" style="display:none">
+        <label>Municipio personalizado</label>
+        <input type="text" id="f-muni-custom-inp">
+      </div>
       <label>Referencia catastral</label>
       <input type="text" id="f-refcat">
       <label>Fecha de visita</label>
@@ -117,11 +134,12 @@
     <div class="form">
 
       <h3 class="h3">Datos generales</h3>
-      <label>Tipo de vivienda</label>
+      <label>Tipo de inmueble</label>
       <select id="c-tipoViv">
         <option value="">—</option>
         <option>Vivienda individual</option>
         <option>Vivienda unifamiliar</option>
+        <option>Local</option>
       </select>
       <div class="ck-row">
         <input type="checkbox" id="c-reforma">
@@ -133,13 +151,6 @@
       </div>
 
       <h3 class="h3">Envolvente — Muros / fachada</h3>
-      <label>Tipo de fachada</label>
-      <select id="c-fachadaTipo">
-        <option value="">—</option>
-        <option>Aislada</option>
-        <option>No aislada</option>
-        <option>Parcialmente aislada</option>
-      </select>
       <label>Posibilidad de aislamiento en fachada</label>
       <select id="c-posAisl">
         <option value="">—</option>
@@ -212,7 +223,6 @@
               <option value="">—</option>
               <option>Gas natural</option>
               <option>Gasóleo</option>
-              <option>GLP</option>
               <option>Electricidad</option>
               <option>Aerotermia</option>
               <option>Biomasa</option>
@@ -230,33 +240,42 @@
           </div>
         </div>
         <div class="row-2">
-          <div><label>Antigüedad (años)</label><input type="number" id="c-calAntig" placeholder="10"></div>
+          <div><label>Antigüedad</label>
+            <select id="c-calAntig">
+              <option value="">—</option>
+              <option>Actual</option>
+              <option>Antigua</option>
+            </select>
+          </div>
           <div><label>% vivienda calefactada</label><input type="number" id="c-calPct" min="0" max="100" placeholder="80"></div>
         </div>
       </div>
 
       <h3 class="h3">Refrigeración</h3>
-      <label>Sistema</label>
+      <label>Tipo (distribución)</label>
       <select id="c-refTipo">
         <option value="">—</option>
         <option>No tiene instalada</option>
         <option>Splits</option>
         <option>Conductos</option>
-        <option>Aerotermia</option>
-        <option>Aire portátil</option>
-        <option>Otro</option>
+        <option>Fancoil</option>
+        <option>Sistema combinado (splits + conductos)</option>
       </select>
       <div id="c-refri-detalle">
-        <label>Combustible / energía</label>
+        <label>Sistema / energía</label>
         <select id="c-refComb">
           <option value="">—</option>
           <option>Electricidad</option>
           <option>Aerotermia</option>
-          <option>Gas</option>
-          <option>Otro</option>
         </select>
         <div class="row-2">
-          <div><label>Antigüedad (años)</label><input type="number" id="c-refAntig" placeholder="8"></div>
+          <div><label>Antigüedad</label>
+            <select id="c-refAntig">
+              <option value="">—</option>
+              <option>Actual</option>
+              <option>Antigua</option>
+            </select>
+          </div>
           <div><label>% vivienda climatizada</label><input type="number" id="c-refPct" min="0" max="100" placeholder="60"></div>
         </div>
       </div>
@@ -292,7 +311,6 @@
         <option value="">—</option>
         <option>Gas natural</option>
         <option>Gasóleo</option>
-        <option>GLP</option>
         <option>Electricidad</option>
         <option>Aerotermia</option>
         <option>Solar</option>
@@ -319,10 +337,17 @@
 
       <h3 class="h3">Foto de fachada</h3>
       <div class="photo-row">
-        <button class="btn-secondary" id="btn-foto-fachada">📷 Hacer foto</button>
+        <button class="btn-secondary" id="btn-foto-fachada">📷 Hacer/elegir foto</button>
         <span id="fachada-info" class="muted">—</span>
       </div>
       <img id="fachada-preview" class="preview" style="display:none">
+
+      <h3 class="h3">Foto de detalle (opcional)</h3>
+      <div class="photo-row">
+        <button class="btn-secondary" id="btn-foto-detalle">📷 Hacer/elegir foto</button>
+        <span id="detalle-info" class="muted">—</span>
+      </div>
+      <img id="detalle-preview" class="preview" style="display:none">
 
       <h3 class="h3">Croquis (hasta 2)</h3>
       <div class="photo-row">
@@ -335,11 +360,30 @@
         <span id="croq2-info" class="muted">—</span>
       </div>
       <img id="croq2-preview" class="preview" style="display:none">
-      <p class="muted tiny">Los croquis admiten foto de cámara o PDF escaneado con apps tipo Adobe Scan o CamScanner.</p>
+      <p class="muted tiny">Los croquis admiten foto o PDF escaneado (Adobe Scan, CamScanner…).</p>
 
-      <input type="file" id="inp-fachada" accept="image/*" capture="environment" hidden>
-      <input type="file" id="inp-croq1" accept="image/*,application/pdf" capture="environment" hidden>
-      <input type="file" id="inp-croq2" accept="image/*,application/pdf" capture="environment" hidden>
+      <!-- Inputs ocultos SIN capture forzado para que funcione en Surface -->
+      <input type="file" id="inp-fachada" accept="image/*" hidden>
+      <input type="file" id="inp-detalle" accept="image/*" hidden>
+      <input type="file" id="inp-croq1" accept="image/*,application/pdf" hidden>
+      <input type="file" id="inp-croq2" accept="image/*,application/pdf" hidden>
+
+      <h3 class="h3">Firma del titular</h3>
+      <div class="ck-row">
+        <input type="checkbox" id="c-firmaReq">
+        <label for="c-firmaReq" style="margin:0">Necesidad de firma del titular</label>
+      </div>
+      <div id="firma-box" style="display:none">
+        <p class="muted tiny">Firma aquí con el dedo (móvil) o el lápiz (tablet). La firma se guardará y se adjuntará al email.</p>
+        <div class="firma-wrap">
+          <canvas id="firma-canvas"></canvas>
+        </div>
+        <div class="firma-btns">
+          <button class="btn-secondary" id="btn-firma-clear" type="button">Borrar</button>
+          <span id="firma-info" class="muted">—</span>
+        </div>
+      </div>
+
     </div>
 
     <button class="btn-primary" id="btn-guardar">Guardar expediente</button>
@@ -359,7 +403,7 @@
       <label>Cuerpo del email</label>
       <textarea id="e-body" rows="14"></textarea>
     </div>
-    <p class="muted">Al pulsar el botón se creará un borrador en tu Gmail con el checklist en PDF, la foto de fachada y los croquis adjuntos. Podrás revisarlo y enviarlo desde Gmail.</p>
+    <p class="muted">Al pulsar el botón se creará un borrador en tu Gmail con el checklist en PDF, las fotos, los croquis y la firma adjuntos. Podrás revisarlo y enviarlo desde Gmail.</p>
     <button class="btn-primary" id="btn-crear-borrador">Crear borrador en Gmail (con adjuntos)</button>
   </div>
 </section>
@@ -371,7 +415,7 @@
     <div class="form">
       <label>URL del Apps Script</label>
       <input type="text" id="cfg-url">
-      <p class="muted tiny">Conecta la app con tu Google Sheets. Cambiar solo si sabes lo que haces.</p>
+      <p class="muted tiny">Conecta la app con tu Google Sheets. No la toques a menos que sepas lo que haces.</p>
 
       <label>Email del colaborador CE3X</label>
       <input type="email" id="cfg-colab" placeholder="colaborador@ejemplo.com">
@@ -388,11 +432,12 @@
 
       <h3 class="h3">Zona peligrosa</h3>
       <button class="btn-danger" id="btn-reset-local">Borrar datos locales</button>
+      <p class="muted tiny">Borra solo los datos de este dispositivo. Los del servidor se mantienen.</p>
     </div>
   </div>
 </section>
 
 </div>
-<script src="app.js?v=6"></script>
+<script src="app.js?v=7"></script>
 </body>
 </html>

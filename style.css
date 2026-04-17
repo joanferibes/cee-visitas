@@ -88,3 +88,17 @@ body{padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bot
 .ck-row{display:flex;align-items:center;gap:10px;margin:10px 0 6px}
 .ck-row input[type="checkbox"]{width:20px;height:20px;accent-color:#4A8A80;margin:0}
 .ck-row label{margin:0 !important;text-transform:none !important;letter-spacing:0 !important;font-size:14px !important;color:#222 !important;font-weight:normal !important}
+
+/* Firma */
+.firma-wrap{border:2px dashed #4A8A80;border-radius:10px;background:#fff;margin:8px 0;touch-action:none}
+#firma-canvas{display:block;width:100%;height:260px;cursor:crosshair;touch-action:none;border-radius:8px}
+.firma-btns{display:flex;align-items:center;gap:12px;margin-top:4px}
+.firma-btns button{width:auto !important;margin:0 !important;padding:8px 16px !important;flex:0 0 auto}
+
+/* Modal */
+.modal{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px}
+.modal-box{background:#fff;border-radius:12px;padding:22px;width:100%;max-width:420px;box-shadow:0 10px 40px rgba(0,0,0,0.3)}
+.modal-box h3{margin:0 0 8px;color:#4A8A80;font-size:17px}
+.modal-box input{width:100%;padding:10px 12px;border:1px solid #d0d5d8;border-radius:8px;font-size:15px;margin-top:8px;box-sizing:border-box}
+.modal-btns{display:flex;gap:10px;margin-top:14px}
+.modal-btns button{flex:1;margin:0 !important}
