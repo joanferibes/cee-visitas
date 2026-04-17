@@ -14,7 +14,7 @@
 // ============================================================================
 // CONFIGURACIÓN POR DEFECTO
 // ============================================================================
-const DEFAULT_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyUc9qPWM9kWt5sXLBiiLo6DSh0ArhR_SmbRUmf87KKgWtxN4HxUuPEOZsDP8SZ-1mXtg/exec";
+const DEFAULT_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwPku0mbVvbmkk1j0oSi5gi2picbTmhADFwlJYE2CjCRK5hDmLMc_fW7Jodd3sNPwnPWQ/exec";
 
 const MUNIS = [
   "", "Pedreguer","Dénia","Ondara","Xàbia","Teulada","Gata de Gorgos",
