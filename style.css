@@ -83,3 +83,8 @@ body{padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bot
 /* ---------- SCREENS ---------- */
 .screen{display:none}
 .screen.active{display:block}
+
+/* Checkbox row */
+.ck-row{display:flex;align-items:center;gap:10px;margin:10px 0 6px}
+.ck-row input[type="checkbox"]{width:20px;height:20px;accent-color:#4A8A80;margin:0}
+.ck-row label{margin:0 !important;text-transform:none !important;letter-spacing:0 !important;font-size:14px !important;color:#222 !important;font-weight:normal !important}
