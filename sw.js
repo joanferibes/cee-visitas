@@ -1,51 +1,41 @@
-const CACHE_NAME = 'cee-visitas-v4';
-const URLS_TO_CACHE = [
-  '/',
-  '/index.html',
-  '/app_v4.js',
-  '/manifest.json'
+// CEE Visitas — Service Worker v5
+const CACHE_NAME = "cee-visitas-v5";
+const BASE = self.location.pathname.replace("sw.js", "");
+
+const urlsToCache = [
+  BASE,
+  BASE + "index.html",
+  BASE + "style.css?v=5",
+  BASE + "app.js?v=5",
+  BASE + "manifest.json",
+  "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"
 ];
 
-self.addEventListener('install', function(event) {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then(function(cache) {
-      return cache.addAll(URLS_TO_CACHE).catch(function(e) {
-        console.log('Error al cachear archivos:', e);
-      });
-    })
+self.addEventListener("install", (e) => {
+  e.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(urlsToCache).catch(()=>{}))
   );
+  self.skipWaiting();
 });
 
-self.addEventListener('fetch', function(event) {
-  if (event.request.method !== 'GET') return;
-  
-  event.respondWith(
-    caches.match(event.request).then(function(response) {
-      if (response) return response;
-      return fetch(event.request).then(function(response) {
-        if (!response || response.status !== 200 || response.type === 'error') return response;
-        var responseToCache = response.clone();
-        caches.open(CACHE_NAME).then(function(cache) {
-          cache.put(event.request, responseToCache);
-        });
-        return response;
-      }).catch(function() {
-        return caches.match('/index.html');
-      });
-    })
+self.addEventListener("activate", (e) => {
+  e.waitUntil(
+    caches.keys().then((keys) =>
+      Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
+    )
   );
+  self.clients.claim();
 });
 
-self.addEventListener('activate', function(event) {
-  event.waitUntil(
-    caches.keys().then(function(cacheNames) {
-      return Promise.all(
-        cacheNames.map(function(cacheName) {
-          if (cacheName !== CACHE_NAME) {
-            return caches.delete(cacheName);
-          }
-        })
-      );
-    })
+self.addEventListener("fetch", (e) => {
+  const url = new URL(e.request.url);
+  // No cachear llamadas al Apps Script (siempre deben ir a la red)
+  if (url.hostname.includes("script.google.com") || url.hostname.includes("googleusercontent.com")) {
+    return; // deja que el navegador haga la petición normal
+  }
+  e.respondWith(
+    caches.match(e.request).then((resp) =>
+      resp || fetch(e.request).catch(() => caches.match(BASE + "index.html"))
+    )
   );
 });

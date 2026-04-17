@@ -1,598 +1,259 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="CEE Visitas">
-  <meta name="theme-color" content="#4A8A80">
-  <title>CEE Visitas — Certificación energética en campo</title>
-  <link rel="manifest" href="manifest.json">
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f5f5f5; color: #333; line-height: 1.5; }
-    .header { background: linear-gradient(135deg, #4A8A80 0%, #7AADA3 100%); color: white; padding: 16px; text-align: center; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
-    .header h1 { font-size: 20px; font-weight: 600; margin-bottom: 4px; }
-    .header p { font-size: 13px; opacity: 0.95; }
-    .online-label { display: inline-block; margin-left: 8px; font-size: 12px; }
-    .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; }
-    .dot-on { background: #4CAF50; }
-    .dot-off { background: #999; }
-    
-    .main { max-width: 800px; margin: 0 auto; }
-    .screen { display: none; padding-bottom: 80px; }
-    .screen:not(.hidden) { display: block; }
-    .hidden { display: none !important; }
-    
-    .stat-card { display: inline-block; width: calc(33.33% - 6px); margin: 3px; padding: 12px; background: white; border-radius: 8px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-    .stat-card .num { font-size: 24px; font-weight: bold; color: #4A8A80; }
-    .stat-card .label { font-size: 12px; color: #999; margin-top: 4px; }
-    
-    .menu-item { display: block; padding: 16px; margin: 8px; background: white; border-radius: 8px; border-left: 4px solid #4A8A80; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.1); transition: all 0.2s; }
-    .menu-item:active { background: #f9f9f9; transform: scale(0.98); }
-    .menu-item .icon { display: inline-block; width: 40px; height: 40px; background: #E8F5E9; border-radius: 8px; text-align: center; line-height: 40px; font-size: 20px; vertical-align: middle; margin-right: 12px; }
-    .menu-item .title { font-weight: 600; display: block; margin-bottom: 2px; }
-    .menu-item .desc { font-size: 12px; color: #999; }
-    
-    .exp-list, .import-list { padding: 8px; }
-    .exp-item { padding: 12px; margin: 8px 0; background: white; border-radius: 8px; cursor: pointer; border-left: 4px solid #4A8A80; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-    .exp-item:active { background: #f9f9f9; }
-    .exp-addr { font-weight: 600; margin-bottom: 4px; }
-    .exp-cli { font-size: 14px; color: #666; margin-bottom: 6px; }
-    .exp-meta { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-    .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; }
-    .badge-p { background: #FFF3E0; color: #E65100; }
-    .badge-v { background: #E8F5E9; color: #1B5E20; }
-    .badge-e { background: #E3F2FD; color: #0D47A1; }
-    .exp-ref { font-size: 12px; color: #999; }
-    
-    .form-group { margin: 16px; }
-    .form-label { display: block; font-weight: 600; margin-bottom: 6px; font-size: 14px; color: #333; }
-    input[type="text"], input[type="email"], input[type="tel"], input[type="number"], input[type="date"], select, textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; font-family: inherit; }
-    input:focus, select:focus, textarea:focus { outline: none; border-color: #4A8A80; box-shadow: 0 0 0 3px rgba(74,138,128,0.1); }
-    textarea { resize: vertical; min-height: 80px; }
-    
-    .section-title { font-size: 12px; font-weight: 700; color: #4A8A80; text-transform: uppercase; letter-spacing: 0.5px; padding: 16px 16px 8px; margin-top: 8px; }
-    
-    .ck-box { display: inline-block; width: 24px; height: 24px; border: 2px solid #4A8A80; border-radius: 4px; text-align: center; line-height: 20px; cursor: pointer; font-weight: bold; color: #4A8A80; margin-right: 8px; user-select: none; }
-    
-    .photo-slot { display: inline-block; width: 100%; height: 200px; background: #f0f0f0; border: 2px dashed #ddd; border-radius: 8px; text-align: center; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-direction: column; color: #999; transition: all 0.2s; }
-    .photo-slot:hover { border-color: #4A8A80; background: #f9f9f9; }
-    .photo-slot.has { border-style: solid; border-color: #4A8A80; }
-    .photo-slot img { max-width: 100%; max-height: 100%; }
-    .photo-slot svg { margin-bottom: 8px; }
-    .photo-slot .pl { display: block; font-size: 12px; }
-    
-    .summary-table { width: 100%; margin: 16px; border-collapse: collapse; }
-    .summary-table td { padding: 8px; border-bottom: 1px solid #eee; }
-    .summary-table td:first-child { font-weight: 600; color: #666; width: 140px; }
-    .summary-table td:last-child { font-weight: 500; }
-    
-    .action-btn { display: block; width: calc(100% - 32px); margin: 8px 16px; padding: 12px; background: #4A8A80; color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 14px; transition: all 0.2s; }
-    .action-btn:active { background: #3d6f68; transform: scale(0.98); }
-    .action-btn.secondary { background: #999; }
-    
-    input[type="file"] { display: none; }
-    
-    .toast { position: fixed; bottom: 20px; left: 16px; right: 16px; max-width: 400px; background: #333; color: white; padding: 12px 16px; border-radius: 6px; font-size: 14px; z-index: 1000; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
-    .toast.show { opacity: 1; pointer-events: auto; }
-    
-    @media (max-width: 480px) {
-      .stat-card { width: calc(50% - 6px); }
-      .header h1 { font-size: 18px; }
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#4A8A80">
+<title>CEE Visitas · Joanfe Ribes</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="stylesheet" href="style.css?v=5">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
 </head>
 <body>
-  <div class="header">
-    <div style="display:flex;align-items:center;justify-content:center;gap:8px">
-      <div style="width:32px;height:32px;background:white;border-radius:4px;display:flex;align-items:center;justify-content:center;font-weight:bold;color:#4A8A80;font-size:14px">JR</div>
-      <div style="text-align:left">
-        <h1>CEE Visitas</h1>
-        <p>Certificación energética en campo</p>
-      </div>
+<div class="app">
+
+<div class="toast" id="toast"></div>
+<div class="sync-bar" id="sync-bar"><span id="sync-text">Sincronizando…</span></div>
+
+<!-- ==================== HOME ==================== -->
+<section class="screen active" id="screen-home">
+  <div class="bar">
+    <span>CEE Visitas</span>
+    <span class="status"><span class="dot" id="status-dot"></span><span id="status-text">…</span></span>
+  </div>
+  <div class="content">
+    <h1 class="h1">Expedientes</h1>
+    <div class="tabs">
+      <button class="tab active" data-tab="pendiente">Pendientes <span class="count" id="cnt-pend">0</span></button>
+      <button class="tab" data-tab="visitado">Visitados <span class="count" id="cnt-vis">0</span></button>
+      <button class="tab" data-tab="enviado">Enviados <span class="count" id="cnt-env">0</span></button>
     </div>
-    <div style="margin-top:8px;font-size:12px">
-      <span class="online-dot dot dot-on"></span>
-      <span class="online-label"> Online</span>
+    <div class="list" id="list-exps"></div>
+    <div class="empty" id="empty-list" style="display:none">
+      <p>No hay expedientes en esta categoría.</p>
     </div>
   </div>
+  <div class="fab-row">
+    <button class="fab-main" id="btn-nuevo">+ Nuevo expediente</button>
+    <button class="fab-alt" id="btn-sync">↻</button>
+    <button class="fab-alt" id="btn-cfg">⚙</button>
+  </div>
+</section>
 
-  <div class="main">
-    <!-- HOME -->
-    <div class="screen" id="screen-home">
-      <div style="padding:16px">
-        <div style="margin:16px 0">
-          <div class="stat-card"><div class="num" id="stat-p">0</div><div class="label">Pendientes</div></div>
-          <div class="stat-card"><div class="num" id="stat-v">0</div><div class="label">Visitados</div></div>
-          <div class="stat-card"><div class="num" id="stat-e">0</div><div class="label">Enviados</div></div>
-        </div>
-        <div id="btn-expedientes" class="menu-item">
-          <span class="icon">📋</span><span class="title">Expedientes</span><span class="desc">Ver todos los realizados</span>
-        </div>
-        <div id="btn-nuevo" class="menu-item">
-          <span class="icon">➕</span><span class="title">Nuevo expediente</span><span class="desc">Crear y realizar visita</span>
-        </div>
-      </div>
-    </div>
+<!-- ==================== NUEVO (origen) ==================== -->
+<section class="screen" id="screen-nuevo">
+  <div class="bar">
+    <button class="back" data-go="home">‹</button>
+    <span>Nuevo expediente</span>
+  </div>
+  <div class="content">
+    <p class="muted">¿De dónde quieres cargar los datos?</p>
+    <button class="card-btn" id="btn-origen-web">
+      <div class="card-title">Desde formulario web</div>
+      <div class="card-sub">Solicitudes recibidas en joanferibes.com</div>
+    </button>
+    <button class="card-btn" id="btn-origen-manual">
+      <div class="card-title">Manual</div>
+      <div class="card-sub">Introducir los datos a mano</div>
+    </button>
+    <button class="card-btn disabled">
+      <div class="card-title">OCR (próximamente)</div>
+      <div class="card-sub">Leer DNI o ref. catastral con cámara</div>
+    </button>
+  </div>
+</section>
 
-    <!-- EXPEDIENTES -->
-    <div class="screen hidden" id="screen-expedientes">
-      <div style="padding:16px">
-        <button class="action-btn secondary" data-back="home">← Atrás</button>
-      </div>
-      <div class="exp-list" id="exp-list"></div>
-    </div>
-
-    <!-- DATOS (Importar + Crear) -->
-    <div class="screen hidden" id="screen-datos">
-      <div style="padding:16px">
-        <button class="action-btn secondary" data-back="home">← Atrás</button>
-        <h2 id="datos-title" style="margin:16px 0;font-size:16px"></h2>
-      </div>
-
-      <div id="method-section">
-        <div style="padding:0 16px">
-          <div style="background:#FFF3E0;padding:12px;border-radius:6px;margin-bottom:16px;font-size:12px;color:#E65100">
-            💡 Importa los datos de tu formulario web o rellena manualmente
-          </div>
-          <button id="btn-import-web" class="action-btn secondary" style="background:#FF9800;margin-bottom:16px">Desde formulario web</button>
-        </div>
-      </div>
-
-      <div class="form-group">
-        <label class="form-label">Nº Expediente</label>
-        <input type="text" id="d-numExp" placeholder="CEE-2026-001">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Nombre cliente</label>
-        <input type="text" id="d-nombre" placeholder="Juan Pérez García">
-      </div>
-      <div class="form-group">
-        <label class="form-label">DNI/NIE</label>
-        <input type="text" id="d-dni" placeholder="12345678A">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Teléfono</label>
-        <input type="tel" id="d-telefono" placeholder="+34 600 123 456">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Dirección</label>
-        <input type="text" id="d-direccion" placeholder="Calle Mayor, 15">
-      </div>
-      <div class="form-group">
-        <label class="form-label">CP</label>
-        <input type="text" id="d-cp" placeholder="03750">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Referencia catastral</label>
-        <input type="text" id="d-refCatastral" placeholder="0123456789AB1234C">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Municipio</label>
-        <select id="d-municipio">
-          <option value="Pedreguer">Pedreguer</option>
-          <option value="Dénia">Dénia</option>
-          <option value="Ondara">Ondara</option>
-          <option value="Xàbia">Xàbia</option>
-          <option value="Teulada">Teulada</option>
-          <option value="Gata de Gorgos">Gata de Gorgos</option>
-          <option value="El Verger">El Verger</option>
-          <option value="Benitatxell">Benitatxell</option>
-          <option value="Els Poblets">Els Poblets</option>
-          <option value="Otro">Otro (especificar)</option>
-        </select>
-      </div>
-      <div id="d-municipioOtro-wrap" class="form-group hidden">
-        <label class="form-label">Especificar municipio</label>
-        <input type="text" id="d-municipioOtro" placeholder="">
-      </div>
-
-      <div style="padding:0 16px">
-        <button id="btn-to-visita" class="action-btn" style="margin:24px 0">Continuar con visita →</button>
-      </div>
-    </div>
-
-    <!-- VISITA -->
-    <div class="screen hidden" id="screen-visita">
-      <div style="padding:16px">
-        <button class="action-btn secondary" data-back="datos">← Datos</button>
-      </div>
-
-      <div class="section-title">Tipo de vivienda</div>
-      <div class="form-group">
-        <select id="v-tipoViv">
-          <option value="">— Selecciona —</option>
-          <option value="Unifamiliar aislada">Unifamiliar aislada</option>
-          <option value="Unifamiliar adosada">Unifamiliar adosada</option>
-          <option value="Bloque de viviendas">Bloque de viviendas</option>
-          <option value="Edificio de oficinas">Edificio de oficinas</option>
-        </select>
-      </div>
-
-      <div class="section-title">Reforma</div>
-      <div class="form-group" style="padding:16px">
-        <label><span class="ck-box" id="v-reforma-ck"></span>Reforma importante en los últimos 15 años</label>
-        <div id="v-reformaAnyo-wrap" class="form-group hidden" style="margin-top:8px;margin-left:32px">
-          <input type="number" id="v-reformaAnyo" placeholder="2020" min="1990" max="2026">
-        </div>
-      </div>
-
-      <div class="section-title">Envolvente — Muros</div>
-      <div class="form-group">
-        <label class="form-label">Tipo de aislamiento en fachada</label>
-        <select id="v-fachadaAislamiento">
-          <option value="">— No tiene —</option>
-          <option value="EPS">EPS (poliestireno expandido)</option>
-          <option value="XPS">XPS (poliestireno extruido)</option>
-          <option value="Lana de roca">Lana de roca</option>
-          <option value="Corcho">Corcho</option>
-          <option value="Otro">Otro</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Espesor de los muros (cm)</label>
-        <input type="number" id="v-murosEspesor" placeholder="30" min="0" max="50">
-      </div>
-
-      <div class="section-title">Envolvente — Huecos</div>
-      <div class="form-group">
-        <label class="form-label">Carpintería</label>
-        <select id="v-carpinteria">
-          <option value="">— Selecciona —</option>
-          <option value="Madera simple">Madera simple</option>
-          <option value="Aluminio simple">Aluminio simple</option>
-          <option value="Aluminio RPT">Aluminio con rotura de puente térmico</option>
-          <option value="PVC simple">PVC simple</option>
-          <option value="PVC RPT">PVC con rotura de puente térmico</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Acristalamiento</label>
-        <select id="v-acristalamiento">
-          <option value="">— Selecciona —</option>
-          <option value="Vidrio simple">Vidrio simple</option>
-          <option value="Doble vidrio">Doble vidrio</option>
-          <option value="Doble bajo emisivo">Doble vidrio bajo emisivo</option>
-          <option value="Triple vidrio">Triple vidrio</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Permeabilidad al aire</label>
-        <select id="v-permeabilidad">
-          <option value="">— Selecciona —</option>
-          <option value="Baja">Baja</option>
-          <option value="Media">Media</option>
-          <option value="Alta">Alta</option>
-        </select>
-      </div>
-
-      <div class="section-title">Cubierta y Suelo</div>
-      <div class="form-group">
-        <label class="form-label">Tipo de techo</label>
-        <select id="v-techo">
-          <option value="">— Selecciona —</option>
-          <option value="Losa hormigón">Losa de hormigón</option>
-          <option value="Forjado bovedilla">Forjado de bovedilla</option>
-          <option value="Madera">Madera</option>
-          <option value="Chapa metálica">Chapa metálica</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Aislamiento en techo</label>
-        <input type="text" id="v-techoAislada" placeholder="ej. Fibra vidrio 5cm">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Tipo de suelo</label>
-        <select id="v-suelo">
-          <option value="">— Selecciona —</option>
-          <option value="Losa hormigón">Losa de hormigón</option>
-          <option value="Forjado bovedilla">Forjado de bovedilla</option>
-          <option value="Lámina flotante">Lámina flotante</option>
-          <option value="Suelo radiante">Suelo radiante</option>
-        </select>
-      </div>
-
-      <div class="section-title">Calefacción</div>
-      <div class="form-group">
-        <label class="form-label">Tipo de sistema</label>
-        <select id="v-calTipo">
-          <option value="">— Selecciona —</option>
-          <option value="No tiene instalada">No tiene instalada</option>
-          <option value="Caldera individual">Caldera individual</option>
-          <option value="Caldera central">Caldera central</option>
-          <option value="Bombas de calor">Bombas de calor</option>
-          <option value="Radiadores eléctricos">Radiadores eléctricos</option>
-        </select>
-      </div>
-      <div id="cal-fields" style="display:none">
-        <div class="form-group">
-          <label class="form-label">Combustible</label>
-          <select id="v-calComb">
-            <option value="">— Selecciona —</option>
-            <option value="Gas natural">Gas natural</option>
-            <option value="Gasóleo">Gasóleo</option>
-            <option value="Electricidad">Electricidad</option>
-            <option value="Biomasa">Biomasa</option>
-            <option value="Otro">Otro</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Sistema de distribución</label>
-          <select id="v-calDist">
-            <option value="">— Selecciona —</option>
-            <option value="Radiadores">Radiadores</option>
-            <option value="Suelo radiante">Suelo radiante</option>
-            <option value="Aire">Aire</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Antigüedad (años)</label>
-          <input type="number" id="v-calAntig" placeholder="10" min="0">
-        </div>
-        <div class="form-group">
-          <label class="form-label">% de la vivienda que calienta</label>
-          <input type="number" id="v-calPct" placeholder="100" min="0" max="100">%
-        </div>
-        <div class="form-group">
-          <label class="form-label">Potencia nominal (kW)</label>
-          <input type="number" id="v-calPotencia" placeholder="10" min="0" step="0.1">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Rendimiento (%)</label>
-          <input type="number" id="v-calRendimiento" placeholder="85" min="0" max="100">
-        </div>
-      </div>
-
-      <div class="section-title">Refrigeración</div>
-      <div class="form-group">
-        <label class="form-label">Tipo de sistema</label>
-        <select id="v-refTipo">
-          <option value="">— Selecciona —</option>
-          <option value="No tiene instalada">No tiene instalada</option>
-          <option value="Aire acondicionado individual">Aire acondicionado individual</option>
-          <option value="Aire acondicionado central">Aire acondicionado central</option>
-          <option value="Bombas de calor">Bombas de calor</option>
-        </select>
-      </div>
-      <div id="ref-fields" style="display:none">
-        <div class="form-group">
-          <label class="form-label">Combustible</label>
-          <select id="v-refComb">
-            <option value="">— Selecciona —</option>
-            <option value="Electricidad">Electricidad</option>
-            <option value="Gas">Gas</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Antigüedad (años)</label>
-          <input type="number" id="v-refAntig" placeholder="8" min="0">
-        </div>
-        <div class="form-group">
-          <label class="form-label">% de la vivienda que climatiza</label>
-          <input type="number" id="v-refPct" placeholder="50" min="0" max="100">%
-        </div>
-        <div class="form-group">
-          <label class="form-label">Potencia nominal (kW)</label>
-          <input type="number" id="v-refPotencia" placeholder="5" min="0" step="0.1">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Rendimiento (%)</label>
-          <input type="number" id="v-refRendimiento" placeholder="90" min="0" max="100">
-        </div>
-      </div>
-
-      <div class="section-title">ACS (Agua Caliente Sanitaria)</div>
-      <div class="form-group">
-        <label class="form-label">Tipo de sistema</label>
-        <select id="v-acsTipo">
-          <option value="">— Selecciona —</option>
-          <option value="Calentador instantáneo">Calentador instantáneo</option>
-          <option value="Depósito acumulador">Depósito acumulador</option>
-          <option value="Solar térmico">Solar térmico</option>
-          <option value="Bomba de calor">Bomba de calor</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Modalidad</label>
-        <select id="v-acsModalidad">
-          <option value="">— Selecciona —</option>
-          <option value="Individual">Individual</option>
-          <option value="Central">Central</option>
-          <option value="Caldera combinada">Caldera combinada</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Acumulación (litros)</label>
-        <input type="number" id="v-acsAcum" placeholder="50" min="0">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Combustible / Energía</label>
-        <select id="v-acsComb">
-          <option value="">— Selecciona —</option>
-          <option value="Gas natural">Gas natural</option>
-          <option value="Gasóleo">Gasóleo</option>
-          <option value="Electricidad">Electricidad</option>
-          <option value="Biomasa">Biomasa</option>
-          <option value="Solar">Solar</option>
-        </select>
-      </div>
-      <div class="form-group" style="padding:16px">
-        <label><span class="ck-box" id="v-acsMixta-ck"></span>Sistema mixto (solar + apoyo)</label>
-      </div>
-
-      <div class="section-title">Energías Renovables</div>
-      <div class="form-group" style="padding:16px">
-        <label><span class="ck-box" id="v-ren-ck"></span>Paneles fotovoltaicos</label>
-        <div id="ren-fields" style="display:none;margin-top:12px">
-          <div class="form-group" style="margin:8px 0 8px 32px">
-            <label class="form-label">Potencia instalada (kW)</label>
-            <input type="number" id="v-renPotencia" placeholder="3" min="0" step="0.1">
-          </div>
-          <div class="form-group" style="margin:8px 0 8px 32px">
-            <label class="form-label">Año de instalación</label>
-            <input type="number" id="v-renAnyo" placeholder="2022" min="1990" max="2026">
-          </div>
-        </div>
-      </div>
-
-      <div class="section-title">Fotografías</div>
-      <div class="form-group">
-        <label class="form-label">Fachada</label>
-        <div class="photo-slot" id="photo-fachada"></div>
-        <input type="file" id="file-fachada" accept="image/*">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Detalle constructivo</label>
-        <div class="photo-slot" id="photo-detalle"></div>
-        <input type="file" id="file-detalle" accept="image/*">
-      </div>
-
-      <div class="section-title">Croquis</div>
-      <div class="form-group">
-        <label class="form-label">Croquis 1</label>
-        <button class="action-btn secondary" id="btn-croq1-cam">📷 Croquis desde cámara</button>
-        <button class="action-btn secondary" id="btn-croq1-file">📁 Cargar archivo</button>
-        <div class="photo-slot" id="photo-croq1" style="margin-top:8px"></div>
-        <input type="file" id="file-croq1-cam" accept="image/*">
-        <input type="file" id="file-croq1-file" accept=".pdf,image/*">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Croquis 2</label>
-        <button class="action-btn secondary" id="btn-croq2-cam">📷 Croquis desde cámara</button>
-        <button class="action-btn secondary" id="btn-croq2-file">📁 Cargar archivo</button>
-        <div class="photo-slot" id="photo-croq2" style="margin-top:8px"></div>
-        <input type="file" id="file-croq2-cam" accept="image/*">
-        <input type="file" id="file-croq2-file" accept=".pdf,image/*">
-      </div>
-
-      <div class="section-title">Observaciones</div>
-      <div class="form-group">
-        <textarea id="v-obs" placeholder="Añade aquí cualquier observación de interés..."></textarea>
-      </div>
-
-      <div style="padding:0 16px">
-        <button id="btn-to-guardar" class="action-btn" style="margin:24px 0">Guardar y continuar →</button>
-      </div>
-    </div>
-
-    <!-- GUARDAR (Resumen + Opciones) -->
-    <div class="screen hidden" id="screen-guardar">
-      <div style="padding:16px">
-        <button class="action-btn secondary" data-back="visita">← Visita</button>
-      </div>
-
-      <div style="padding:16px">
-        <h2 style="margin-bottom:16px;font-size:16px">Resumen de la visita</h2>
-        <table class="summary-table">
-          <tr><td>Nº Exp.</td><td id="sum-numexp">—</td></tr>
-          <tr><td>Cliente</td><td id="sum-nombre">—</td></tr>
-          <tr><td>Dirección</td><td id="sum-dir">—</td></tr>
-          <tr><td>Municipio</td><td id="sum-muni">—</td></tr>
-          <tr><td>Tipo vivienda</td><td id="sum-tipo">—</td></tr>
-          <tr id="sum-reforma-row"><td>Reforma</td><td id="sum-reforma">—</td></tr>
-          <tr><td>Fachada</td><td id="sum-fachada">—</td></tr>
-          <tr><td>Huecos</td><td id="sum-huecos">—</td></tr>
-          <tr><td>Techo/Suelo</td><td id="sum-techo">—</td></tr>
-          <tr><td>Suelo</td><td id="sum-suelo">—</td></tr>
-          <tr><td>Calefacción</td><td id="sum-cal">—</td></tr>
-          <tr><td>Refrigeración</td><td id="sum-ref">—</td></tr>
-          <tr><td>ACS</td><td id="sum-acs">—</td></tr>
-          <tr><td>Renovables</td><td id="sum-ren">—</td></tr>
-          <tr><td>Fotos</td><td id="sum-fotos">—</td></tr>
-          <tr><td>Croquis</td><td id="sum-croq">—</td></tr>
-        </table>
-
-        <h3 style="margin:24px 0 12px;font-size:14px">Descargas</h3>
-        <button id="dl-checklist" class="action-btn secondary">📄 Descargar checklist PDF</button>
-        <button id="dl-croq1" class="action-btn secondary hidden">📐 Descargar croquis 1</button>
-        <button id="dl-croq2" class="action-btn secondary hidden">📐 Descargar croquis 2</button>
-
-        <h3 style="margin:24px 0 12px;font-size:14px">Enviar por email</h3>
-        <div style="background:#E3F2FD;padding:12px;border-radius:6px;font-size:12px;color:#0D47A1;margin-bottom:12px">
-          Email configurado: <strong id="g-email-to">sin configurar</strong>
-        </div>
-        <button id="btn-cfg-email" class="action-btn secondary">⚙️ Configurar email</button>
-        <button id="btn-preview-email" class="action-btn secondary">👁️ Ver email</button>
-        <button id="btn-gmail-draft" class="action-btn">✉️ Crear borrador en Gmail</button>
-
-        <h3 style="margin:24px 0 12px;font-size:14px">Guardar expediente</h3>
-        <button id="btn-save" class="action-btn">💾 Guardar en base de datos</button>
-      </div>
-    </div>
-
-    <!-- EMAIL -->
-    <div class="screen hidden" id="screen-email">
-      <div style="padding:16px">
-        <button class="action-btn secondary" data-back="guardar">← Atrás</button>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Para:</label>
-        <input type="email" id="e-to" readonly>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Asunto:</label>
-        <input type="text" id="e-asunto" readonly>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Mensaje:</label>
-        <textarea id="e-body" readonly style="min-height:300px;font-family:monospace;font-size:11px"></textarea>
-      </div>
-      <div style="padding:0 16px;margin:16px 0">
-        <button id="btn-email-back" class="action-btn secondary">← Atrás</button>
-      </div>
-    </div>
-
-    <!-- CONFIG EMAIL -->
-    <div class="screen hidden" id="screen-cfgmail">
-      <div style="padding:16px">
-        <button class="action-btn secondary" data-back="guardar">← Atrás</button>
-        <h2 style="margin:16px 0;font-size:16px">Configuración</h2>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Email para recibir borradores:</label>
-        <input type="email" id="cfg-email" placeholder="tu@email.com">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Nombre técnico:</label>
-        <input type="text" id="cfg-nombre" placeholder="Juan Felipe Ribes Aranda">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Firma del email:</label>
-        <textarea id="cfg-firma" placeholder="Saludos,&#10;Juan Felipe..."></textarea>
-      </div>
-      <div class="form-group">
-        <label class="form-label">URL Apps Script (Gmail)</label>
-        <input type="text" id="cfg-scriptUrl" placeholder="https://script.google.com/macros/s/...">
-      </div>
-      <div style="padding:0 16px;margin:16px 0">
-        <button id="btn-save-cfg" class="action-btn">💾 Guardar configuración</button>
-      </div>
-    </div>
-
-    <!-- IMPORTAR -->
-    <div class="screen hidden" id="screen-importar">
-      <div style="padding:16px">
-        <button class="action-btn secondary" data-back="datos">← Atrás</button>
-        <h2 style="margin:16px 0;font-size:16px">Solicitudes pendientes</h2>
-      </div>
-      <div class="import-list" id="import-list"></div>
+<!-- ==================== IMPORTAR FORMULARIO ==================== -->
+<section class="screen" id="screen-importar">
+  <div class="bar">
+    <button class="back" data-go="nuevo">‹</button>
+    <span>Solicitudes pendientes</span>
+    <button class="bar-btn" id="btn-importar-reload">↻</button>
+  </div>
+  <div class="content">
+    <div class="list" id="list-solicitudes"></div>
+    <div class="empty" id="empty-sol" style="display:none">
+      <p>No hay solicitudes pendientes.</p>
     </div>
   </div>
+</section>
 
-  <div class="toast" id="toast"></div>
+<!-- ==================== DATOS DEL EXPEDIENTE ==================== -->
+<section class="screen" id="screen-datos">
+  <div class="bar">
+    <button class="back" data-go="home">‹</button>
+    <span id="datos-title">Datos</span>
+  </div>
+  <div class="content">
+    <div class="form">
+      <label>Nombre</label>
+      <input type="text" id="f-nombre">
+      <div class="row-2">
+        <div><label>Tipo doc.</label>
+          <select id="f-tipodoc"><option>DNI</option><option>NIE</option><option>CIF</option><option>Pasaporte</option></select>
+        </div>
+        <div><label>Nº documento</label>
+          <input type="text" id="f-numdoc">
+        </div>
+      </div>
+      <div class="row-2">
+        <div><label>Teléfono</label><input type="tel" id="f-tel"></div>
+        <div><label>Email</label><input type="email" id="f-email"></div>
+      </div>
+      <label>Dirección</label>
+      <input type="text" id="f-direccion">
+      <div class="row-2">
+        <div><label>Municipio</label>
+          <select id="f-muni"></select>
+        </div>
+        <div><label>Cód. Postal</label>
+          <input type="text" id="f-cp" inputmode="numeric">
+        </div>
+      </div>
+      <label>Referencia catastral</label>
+      <input type="text" id="f-refcat">
+      <label>Fecha de visita</label>
+      <input type="date" id="f-fechavisita">
+      <label>Observaciones</label>
+      <textarea id="f-obs" rows="3"></textarea>
+    </div>
+    <button class="btn-primary" id="btn-ir-checklist">Siguiente: Checklist ›</button>
+  </div>
+</section>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script src="app_v4.js"></script>
-  <script>
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('sw.js').then(function(reg) {
-        console.log('SW registrado');
-      }).catch(function(err) {
-        console.log('Error SW:', err);
-      });
-    }
-  </script>
+<!-- ==================== CHECKLIST ==================== -->
+<section class="screen" id="screen-checklist">
+  <div class="bar">
+    <button class="back" data-go="datos">‹</button>
+    <span>Checklist de visita</span>
+  </div>
+  <div class="content">
+    <div class="form">
+      <h3 class="h3">Envolvente</h3>
+      <textarea id="c-envolvente" rows="2" placeholder="Tipo de cerramiento, aislamiento observado, ventanas…"></textarea>
+
+      <h3 class="h3">Calefacción</h3>
+      <div class="row-2">
+        <div><label>Sistema</label>
+          <select id="c-calef-sis"><option value="">—</option><option>Sin calefacción</option><option>Caldera gas natural</option><option>Caldera gasoil</option><option>Caldera GLP</option><option>Bomba de calor</option><option>Eléctrica (efecto Joule)</option><option>Biomasa</option><option>Suelo radiante</option><option>Otro</option></select>
+        </div>
+        <div><label>% vivienda calefactada</label>
+          <input type="number" id="c-calef-pct" inputmode="numeric" min="0" max="100">
+        </div>
+      </div>
+
+      <h3 class="h3">Refrigeración</h3>
+      <div class="row-2">
+        <div><label>Sistema</label>
+          <select id="c-refri-sis"><option value="">—</option><option>Sin refrigeración</option><option>Splits (bomba de calor)</option><option>Conductos</option><option>Aire portátil</option><option>Otro</option></select>
+        </div>
+        <div><label>% vivienda climatizada</label>
+          <input type="number" id="c-refri-pct" inputmode="numeric" min="0" max="100">
+        </div>
+      </div>
+
+      <h3 class="h3">ACS</h3>
+      <select id="c-acs"><option value="">—</option><option>Termo eléctrico</option><option>Caldera gas natural</option><option>Caldera gasoil</option><option>Caldera GLP</option><option>Bomba de calor ACS</option><option>Termosolar + apoyo</option><option>Otro</option></select>
+
+      <h3 class="h3">Renovables</h3>
+      <div class="row-2">
+        <div><label>Tipo</label>
+          <select id="c-ren-tipo"><option value="">—</option><option>Sin renovables</option><option>Fotovoltaica</option><option>Solar térmica</option><option>Geotérmica</option><option>Biomasa</option></select>
+        </div>
+        <div><label>kW instalados</label>
+          <input type="number" id="c-ren-kw" inputmode="decimal" step="0.1">
+        </div>
+      </div>
+
+      <h3 class="h3">Observaciones</h3>
+      <textarea id="c-obs" rows="3"></textarea>
+
+      <h3 class="h3">Foto de fachada</h3>
+      <div class="photo-row">
+        <button class="btn-secondary" id="btn-foto-fachada">📷 Hacer foto</button>
+        <span id="fachada-info" class="muted">—</span>
+      </div>
+      <img id="fachada-preview" class="preview" style="display:none">
+
+      <h3 class="h3">Croquis (hasta 2)</h3>
+      <div class="photo-row">
+        <button class="btn-secondary" id="btn-croquis-1">📐 Croquis 1</button>
+        <span id="croq1-info" class="muted">—</span>
+      </div>
+      <img id="croq1-preview" class="preview" style="display:none">
+      <div class="photo-row">
+        <button class="btn-secondary" id="btn-croquis-2">📐 Croquis 2</button>
+        <span id="croq2-info" class="muted">—</span>
+      </div>
+      <img id="croq2-preview" class="preview" style="display:none">
+
+      <!-- Inputs ocultos para cámara -->
+      <input type="file" id="inp-fachada" accept="image/*" capture="environment" hidden>
+      <input type="file" id="inp-croq1" accept="image/*" capture="environment" hidden>
+      <input type="file" id="inp-croq2" accept="image/*" capture="environment" hidden>
+    </div>
+
+    <button class="btn-primary" id="btn-guardar">Guardar expediente</button>
+    <button class="btn-secondary" id="btn-enviar">Enviar al colaborador</button>
+  </div>
+</section>
+
+<!-- ==================== ENVIAR EMAIL ==================== -->
+<section class="screen" id="screen-email">
+  <div class="bar">
+    <button class="back" data-go="checklist">‹</button>
+    <span>Enviar al colaborador</span>
+  </div>
+  <div class="content">
+    <div class="form">
+      <label>Destinatario</label>
+      <input type="email" id="e-to">
+      <label>Asunto</label>
+      <input type="text" id="e-asunto">
+      <label>Cuerpo</label>
+      <textarea id="e-body" rows="8"></textarea>
+    </div>
+    <p class="muted">Se abrirá tu cliente de correo con el borrador. Los adjuntos (checklist PDF, foto y croquis) se crearán como borrador en Gmail en segundo plano.</p>
+    <button class="btn-primary" id="btn-email-send">Abrir cliente de correo</button>
+  </div>
+</section>
+
+<!-- ==================== CONFIG ==================== -->
+<section class="screen" id="screen-cfg">
+  <div class="bar">
+    <button class="back" data-go="home">‹</button>
+    <span>Configuración</span>
+  </div>
+  <div class="content">
+    <div class="form">
+      <label>URL del Apps Script</label>
+      <input type="text" id="cfg-url">
+      <p class="muted tiny">Esta URL conecta la app con tu Google Sheets. Cámbiala solo si sabes lo que haces.</p>
+
+      <label>Email del colaborador CE3X</label>
+      <input type="email" id="cfg-colab">
+
+      <label>Firma de email</label>
+      <textarea id="cfg-firma" rows="5"></textarea>
+
+      <button class="btn-primary" id="btn-save-cfg">Guardar configuración</button>
+
+      <h3 class="h3">Sincronización</h3>
+      <button class="btn-secondary" id="btn-sync-now">↻ Sincronizar ahora</button>
+      <button class="btn-secondary" id="btn-test-conn">Probar conexión</button>
+      <p class="muted tiny" id="sync-info">—</p>
+
+      <h3 class="h3">Zona peligrosa</h3>
+      <button class="btn-danger" id="btn-reset-local">Borrar datos locales</button>
+    </div>
+  </div>
+</section>
+
+</div>
+
+<script src="app.js?v=5"></script>
 </body>
 </html>

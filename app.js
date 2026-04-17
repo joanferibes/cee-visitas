@@ -1,280 +1,924 @@
+/* ============================================================================
+ * CEE VISITAS · PWA v5
+ * Joanfe Ribes Oficina Tècnica
+ * ---------------------------------------------------------------------------
+ * Arquitectura:
+ *   - IndexedDB = caché local (funciona offline)
+ *   - Google Sheets (vía Apps Script) = fuente de verdad compartida
+ *   - Comunicación = JSONP (evita CORS de Apps Script)
+ *   - Sincronización = automática al abrir + botón manual
+ * ========================================================================= */
 (function(){
 "use strict";
 
-var MUNI=["Pedreguer","Dénia","Ondara","Xàbia","Teulada","Gata de Gorgos","El Verger","Benitatxell","Els Poblets","Otro"];
-var exps=[],cur=null,isNew=true;
-var cfg={email:"",nombre:"",firma:"Saludos,\nJuan Felipe Ribes\nArquitecto Técnico — col. 3.184\nTel. 605 875 899",scriptUrl:""};
-var SCRIPT_URL="https://script.google.com/macros/s/AKfycbyUc9qPWM9kWt5sXLBiiLo6DSh0ArhR_SmbRUmf87KKgWtxN4HxUuPEOZsDP8SZ-1mXtg/exec";
+// ============================================================================
+// CONFIGURACIÓN POR DEFECTO
+// ============================================================================
+const DEFAULT_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyUc9qPWM9kWt5sXLBiiLo6DSh0ArhR_SmbRUmf87KKgWtxN4HxUuPEOZsDP8SZ-1mXtg/exec";
 
-function mkExp(){return{id:Date.now().toString(),_tipo:"expediente",numExp:"",nombre:"",dni:"",telefono:"",direccion:"",cp:"",refCatastral:"",municipio:"",municipioOtro:"",estado:"pendiente",tipoViv:"",reformaImportante:false,reformaAnyo:"",fachadaAislamiento:"",murosEspesor:"",carpinteria:"",acristalamiento:"",permeabilidad:"",techo:"",techoAislada:"",suelo:"",calTipo:"",calComb:"",calDist:"",calAntig:"",calPct:"",calPotencia:"",calRendimiento:"",refTipo:"",refComb:"",refAntig:"",refPct:"",refPotencia:"",refRendimiento:"",acsTipo:"",acsModalidad:"",acsAcum:"",acsComb:"",acsMixta:false,renPaneles:false,renPotencia:"",renAnyo:"",obs:"",fFach:null,fDet:null,fCroq1:null,fCroq2:null,fecha:new Date().toISOString(),sheetsId:""}}
-function getMuni(){return cur.municipio==="Otro"?cur.municipioOtro:cur.municipio}
-function fmtDate(d){try{return new Date(d).toLocaleDateString("es-ES")}catch(e){return""}}
+const MUNIS = [
+  "", "Pedreguer","Dénia","Ondara","Xàbia","Teulada","Gata de Gorgos",
+  "El Verger","Benitatxell","Els Poblets","Benissa","Calp","Moraira",
+  "Jesús Pobre","Orba","Parcent","Senija","Lliber","Otro"
+];
 
-var currentScreen="home",screens={};
-function $(id){return document.getElementById(id)}
-function html(id,h){var el=$(id);if(el)el.innerHTML=h}
-function show(id){var el=$(id);if(el)el.classList.remove("hidden")}
-function hide(id){var el=$(id);if(el)el.classList.add("hidden")}
-function val(id,v){var el=$(id);if(!el)return"";if(v!==undefined)el.value=v;return el.value}
-function go(name){var el=$("screen-"+currentScreen);if(el)el.classList.add("hidden");currentScreen=name;if(typeof screens[name]==="function")screens[name]();var el2=$("screen-"+name);if(el2)el2.classList.remove("hidden");window.scrollTo(0,0)}
-function toast(msg){var t=$("toast");t.textContent=msg;t.classList.add("show");setTimeout(function(){t.classList.remove("show")},2500)}
+// ============================================================================
+// INDEXEDDB
+// ============================================================================
+const DB_NAME = "cee_visitas_v5";
+const DB_VER = 1;
 
-// JSONP para evitar CORS
-function fetchJSONP(url){return new Promise(function(resolve,reject){var cbName="_cb_"+Date.now();window[cbName]=function(data){delete window[cbName];document.head.removeChild(script);resolve(data)};var script=document.createElement("script");script.src=url+(url.indexOf("?")>-1?"&":"?")+"callback="+cbName;script.onerror=function(){delete window[cbName];document.head.removeChild(script);reject(new Error("Error JSONP"))};document.head.appendChild(script)})}
-
-async function init(){
-  try{cfg.scriptUrl=localStorage.getItem("cfg_scriptUrl")||"";cfg.email=localStorage.getItem("cfg_email")||"";cfg.nombre=localStorage.getItem("cfg_nombre")||"";cfg.firma=localStorage.getItem("cfg_firma")||cfg.firma}catch(e){}
-  renderHome();
-  function updateOnline(){document.querySelectorAll(".online-dot").forEach(function(d){d.className="dot "+(navigator.onLine?"dot-on":"dot-off")});document.querySelectorAll(".online-label").forEach(function(l){l.textContent=navigator.onLine?" Online":" Offline"})}
-  window.addEventListener("online",updateOnline);window.addEventListener("offline",updateOnline);updateOnline();
-  var urlParams=new URLSearchParams(window.location.search);var importId=urlParams.get("id");
-  if(importId){window.history.replaceState({},document.title,window.location.pathname);toast("Cargando solicitud...");importarPorId(importId);return}
-  go("home");
+function openDB(){
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, DB_VER);
+    req.onupgradeneeded = (e) => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains("expedientes")) {
+        db.createObjectStore("expedientes", { keyPath: "id" });
+      }
+      if (!db.objectStoreNames.contains("config")) {
+        db.createObjectStore("config", { keyPath: "key" });
+      }
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
 }
 
-// ======================== IMPORTAR DESDE FORMULARIO WEB ========================
-async function importarPorId(sheetsId){try{var url=SCRIPT_URL+"?action=detalle&id="+encodeURIComponent(sheetsId);var data=await fetchJSONP(url);if(data.status==="ok"&&data.solicitud){cargarSolicitudEnExp(data.solicitud);toast("Solicitud importada");renderDatos();go("datos")}else{toast("No encontrada");go("home")}}catch(e){toast("Error: "+e.message);go("home")}}
+async function dbGetAll(store){
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const r = db.transaction(store, "readonly").objectStore(store).getAll();
+    r.onsuccess = () => resolve(r.result || []);
+    r.onerror = () => reject(r.error);
+  });
+}
 
-function cargarSolicitudEnExp(sol){
-  cur=mkExp();isNew=true;cur.sheetsId=sol.id||"";
-  cur.nombre=sol.nombre||"";cur.dni=sol.numeroDocumento||"";
-  cur.telefono=(sol.telefono||"").toString();cur.direccion=sol.direccion||"";
-  cur.cp=(sol.cp||"").toString();cur.refCatastral=sol.refCatastral||"";cur.obs=sol.observaciones||"";
-  var muni=sol.municipio||"";var muniUpper=muni.toUpperCase().trim();var found=false;
-  for(var i=0;i<MUNI.length;i++){if(MUNI[i].toUpperCase()===muniUpper){cur.municipio=MUNI[i];found=true;break}}
-  if(!found){
-    if(muniUpper==="BENITACHELL"||muniUpper==="EL POBLE NOU DE BENITATXELL"){cur.municipio="Benitatxell";found=true}
-    else if(muniUpper==="BENIARBEIG"||muniUpper==="LA XARA"){cur.municipio="Otro";cur.municipioOtro=muni;found=true}
-    else if(muniUpper==="JÁVEA"||muniUpper==="JAVEA"){cur.municipio="Xàbia";found=true}
-    else if(muniUpper==="DENIA"||muniUpper==="DÉNIA"){cur.municipio="Dénia";found=true}
+async function dbGet(store, key){
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const r = db.transaction(store, "readonly").objectStore(store).get(key);
+    r.onsuccess = () => resolve(r.result || null);
+    r.onerror = () => reject(r.error);
+  });
+}
+
+async function dbPut(store, obj){
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(store, "readwrite");
+    tx.objectStore(store).put(obj);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+async function dbDelete(store, key){
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(store, "readwrite");
+    tx.objectStore(store).delete(key);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+async function dbClear(store){
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(store, "readwrite");
+    tx.objectStore(store).clear();
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+// ============================================================================
+// JSONP — comunicación con Apps Script evitando CORS
+// ============================================================================
+let _jsonpCounter = 0;
+function jsonp(url, params, timeoutMs){
+  timeoutMs = timeoutMs || 25000;
+  return new Promise((resolve, reject) => {
+    const cbName = "_gasCb_" + (Date.now()) + "_" + (++_jsonpCounter);
+    const qs = Object.keys(params || {}).map(k =>
+      encodeURIComponent(k) + "=" + encodeURIComponent(params[k])
+    ).join("&");
+    const fullUrl = url + (url.indexOf("?") > -1 ? "&" : "?")
+      + qs + (qs ? "&" : "") + "callback=" + cbName;
+
+    const script = document.createElement("script");
+    const timer = setTimeout(() => {
+      cleanup();
+      reject(new Error("Tiempo de espera agotado"));
+    }, timeoutMs);
+
+    function cleanup(){
+      clearTimeout(timer);
+      try { delete window[cbName]; } catch(e) { window[cbName] = undefined; }
+      if (script.parentNode) script.parentNode.removeChild(script);
+    }
+
+    window[cbName] = function(data){
+      cleanup();
+      resolve(data);
+    };
+    script.onerror = function(){
+      cleanup();
+      reject(new Error("Error de red al llamar al Apps Script"));
+    };
+    script.src = fullUrl;
+    document.head.appendChild(script);
+  });
+}
+
+// ============================================================================
+// BACKEND (Apps Script) — wrappers concretos
+// ============================================================================
+async function backendUrl(){
+  const cfg = await getCfg();
+  return cfg.scriptUrl || DEFAULT_SCRIPT_URL;
+}
+
+async function apiStatus(){
+  return jsonp(await backendUrl(), { action: "status" }, 10000);
+}
+
+async function apiListarSolicitudes(){
+  return jsonp(await backendUrl(), { action: "listar" });
+}
+
+async function apiDetalleSolicitud(id){
+  return jsonp(await backendUrl(), { action: "detalle", id });
+}
+
+async function apiActualizarEstadoSolicitud(id, estado){
+  return jsonp(await backendUrl(), { action: "actualizar_estado", id, estado });
+}
+
+async function apiListarExpedientes(since){
+  return jsonp(await backendUrl(), { action: "listar_exp", since: since || "" });
+}
+
+async function apiGuardarExpediente(id, datos, estado){
+  // Codificar datos en base64 para evitar problemas con caracteres especiales
+  // y fotos (que están como dataURL) en URL larga
+  const json = JSON.stringify(datos);
+  const datosB64 = btoa(unescape(encodeURIComponent(json)));
+  return jsonp(await backendUrl(), {
+    action: "guardar_exp",
+    id: id,
+    datos: datosB64,
+    estado: estado || "pendiente"
+  }, 40000);
+}
+
+async function apiBorrarExpediente(id){
+  return jsonp(await backendUrl(), { action: "borrar_exp", id });
+}
+
+// ============================================================================
+// CONFIGURACIÓN LOCAL
+// ============================================================================
+async function getCfg(){
+  const cfg = await dbGet("config", "main");
+  return cfg || {
+    key: "main",
+    scriptUrl: DEFAULT_SCRIPT_URL,
+    emailColab: "",
+    firma: "Un saludo,\n\nJuan Felipe Ribes Aranda\nArquitecto Técnico · col. 3.184\nJoanfe Ribes Oficina Tècnica\nTel. 605 875 899\nadministracion@joanferibes.com",
+    lastSync: ""
+  };
+}
+
+async function saveCfg(cfg){
+  cfg.key = "main";
+  await dbPut("config", cfg);
+}
+
+// ============================================================================
+// ESTADO DE LA APP
+// ============================================================================
+const state = {
+  currentTab: "pendiente",
+  expCurrent: null,  // expediente que se está editando
+  online: navigator.onLine
+};
+
+// ============================================================================
+// HELPERS DOM
+// ============================================================================
+const $ = (id) => document.getElementById(id);
+const byClass = (root, sel) => root.querySelectorAll(sel);
+
+function go(screenId){
+  document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+  const t = $("screen-" + screenId);
+  if (t) t.classList.add("active");
+  window.scrollTo(0,0);
+}
+
+function toast(msg, ms){
+  const t = $("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  clearTimeout(toast._t);
+  toast._t = setTimeout(() => t.classList.remove("show"), ms || 2500);
+}
+
+function showSync(msg){
+  const bar = $("sync-bar");
+  $("sync-text").textContent = msg;
+  bar.classList.add("visible");
+}
+
+function hideSync(){
+  $("sync-bar").classList.remove("visible");
+}
+
+function setStatus(online){
+  state.online = online;
+  const dot = $("status-dot");
+  const txt = $("status-text");
+  if (online) {
+    dot.className = "dot on";
+    txt.textContent = "Online";
+  } else {
+    dot.className = "dot off";
+    txt.textContent = "Offline";
   }
-  if(!found){cur.municipio="Otro";cur.municipioOtro=muni}
 }
 
-async function mostrarSolicitudesPendientes(){
-  toast("Cargando solicitudes...");try{var url=SCRIPT_URL+"?action=listar&estado=pendiente";var data=await fetchJSONP(url);if(data.status!=="ok"){toast("Error");return}
-  var sols=data.solicitudes||[];if(sols.length===0){toast("No hay solicitudes pendientes");return}
-  renderImportList(sols);go("importar")}catch(e){toast("Error: "+e.message)}}
+// ============================================================================
+// EXPEDIENTES — CRUD local + push al backend
+// ============================================================================
+function nuevoExpedienteVacio(){
+  return {
+    id: "exp_" + Date.now() + "_" + Math.random().toString(36).slice(2,7),
+    origen: "manual",
+    fechaCreacion: new Date().toISOString(),
+    fechaActualizacion: new Date().toISOString(),
+    estado: "pendiente",
+    solicitudId: "",
+    datos: {
+      nombre: "", tipoDocumento: "DNI", numeroDocumento: "",
+      telefono: "", email: "",
+      direccion: "", municipio: "", codigoPostal: "",
+      referenciaCatastral: "",
+      fechaVisita: "", observaciones: ""
+    },
+    checklist: {
+      envolvente: "",
+      calefSistema: "", calefPct: "",
+      refriSistema: "", refriPct: "",
+      acs: "",
+      renTipo: "", renKw: "",
+      observaciones: ""
+    },
+    fotos: { fachada: "", croq1: "", croq2: "" },
+    pendienteSync: false
+  };
+}
 
-function renderImportList(sols){
-  var c=$("import-list");if(!c)return;var h="";
-  sols.forEach(function(s){
-    var fecha="";try{fecha=new Date(s.fechaRecepcion).toLocaleDateString("es-ES")}catch(e){}
-    h+='<div class="exp-item import-item" data-sheets-id="'+(s.id||"")+'" data-idx="'+sols.indexOf(s)+'">';
-    h+='<div class="exp-addr">'+(s.direccion||"Sin dirección")+'</div>';
-    h+='<div class="exp-cli">'+(s.nombre||"Sin nombre")+'</div>';
-    h+='<div class="exp-meta"><span class="badge badge-p">Pendiente</span><span class="exp-ref">'+fecha+'</span></div>';
-    h+='</div>';
+async function guardarExpedienteLocal(exp){
+  exp.fechaActualizacion = new Date().toISOString();
+  exp.pendienteSync = true;
+  await dbPut("expedientes", exp);
+}
+
+async function pushExpediente(exp){
+  try {
+    const res = await apiGuardarExpediente(exp.id, {
+      origen: exp.origen,
+      fechaCreacion: exp.fechaCreacion,
+      solicitudId: exp.solicitudId,
+      datos: exp.datos,
+      checklist: exp.checklist,
+      // No subimos las fotos a Sheets (demasiado grandes). Se quedan en local
+      // y se adjuntan al email cuando se envía al colaborador.
+    }, exp.estado);
+    if (res && res.status === "ok") {
+      exp.pendienteSync = false;
+      exp.fechaActualizacion = res.fechaActualizacion || exp.fechaActualizacion;
+      await dbPut("expedientes", exp);
+      return true;
+    }
+    return false;
+  } catch(e) {
+    console.warn("push fallido:", e);
+    return false;
+  }
+}
+
+// ============================================================================
+// SINCRONIZACIÓN
+// ============================================================================
+async function sincronizar(){
+  showSync("Sincronizando…");
+  try {
+    // 1) Subir cambios locales pendientes
+    const todos = await dbGetAll("expedientes");
+    const pendientes = todos.filter(e => e.pendienteSync);
+    let pushedOk = 0, pushedFail = 0;
+    for (const exp of pendientes) {
+      const ok = await pushExpediente(exp);
+      if (ok) pushedOk++; else pushedFail++;
+    }
+
+    // 2) Descargar cambios del servidor
+    const res = await apiListarExpedientes("");
+    let pulled = 0;
+    if (res && res.status === "ok" && Array.isArray(res.expedientes)) {
+      for (const remoto of res.expedientes) {
+        const local = await dbGet("expedientes", remoto.id);
+        if (!local) {
+          // Nuevo: crear en local (sin fotos, que se quedan donde se crearon)
+          const exp = nuevoExpedienteVacio();
+          exp.id = remoto.id;
+          exp.fechaActualizacion = remoto.fechaActualizacion || exp.fechaActualizacion;
+          exp.estado = remoto.estado || "pendiente";
+          if (remoto.datos) {
+            if (remoto.datos.datos) exp.datos = Object.assign(exp.datos, remoto.datos.datos);
+            if (remoto.datos.checklist) exp.checklist = Object.assign(exp.checklist, remoto.datos.checklist);
+            if (remoto.datos.origen) exp.origen = remoto.datos.origen;
+            if (remoto.datos.solicitudId) exp.solicitudId = remoto.datos.solicitudId;
+            if (remoto.datos.fechaCreacion) exp.fechaCreacion = remoto.datos.fechaCreacion;
+          }
+          exp.pendienteSync = false;
+          await dbPut("expedientes", exp);
+          pulled++;
+        } else if (!local.pendienteSync) {
+          // Comparar fechas: si el remoto es más reciente, sobrescribir
+          const remotoFecha = new Date(remoto.fechaActualizacion || 0).getTime();
+          const localFecha = new Date(local.fechaActualizacion || 0).getTime();
+          if (remotoFecha > localFecha) {
+            local.fechaActualizacion = remoto.fechaActualizacion;
+            local.estado = remoto.estado || local.estado;
+            if (remoto.datos) {
+              if (remoto.datos.datos) local.datos = Object.assign(local.datos, remoto.datos.datos);
+              if (remoto.datos.checklist) local.checklist = Object.assign(local.checklist, remoto.datos.checklist);
+            }
+            await dbPut("expedientes", local);
+            pulled++;
+          }
+        }
+      }
+    }
+
+    // 3) Actualizar última sincronización
+    const cfg = await getCfg();
+    cfg.lastSync = new Date().toISOString();
+    await saveCfg(cfg);
+
+    setStatus(true);
+    hideSync();
+    renderHome();
+
+    const msg = `↑${pushedOk} ↓${pulled}` + (pushedFail ? ` · ${pushedFail} fallo(s)` : "");
+    toast("Sincronizado · " + msg);
+    return true;
+  } catch(e) {
+    console.warn("Error sync:", e);
+    setStatus(false);
+    hideSync();
+    toast("Sin conexión — datos guardados en local");
+    return false;
+  }
+}
+
+// ============================================================================
+// RENDER HOME
+// ============================================================================
+async function renderHome(){
+  const exps = await dbGetAll("expedientes");
+  const pend = exps.filter(e => e.estado === "pendiente");
+  const vis  = exps.filter(e => e.estado === "visitado");
+  const env  = exps.filter(e => e.estado === "enviado");
+
+  $("cnt-pend").textContent = pend.length;
+  $("cnt-vis").textContent = vis.length;
+  $("cnt-env").textContent = env.length;
+
+  const tab = state.currentTab;
+  const list = tab === "pendiente" ? pend : (tab === "visitado" ? vis : env);
+  list.sort((a,b) => new Date(b.fechaActualizacion||0) - new Date(a.fechaActualizacion||0));
+
+  const cont = $("list-exps");
+  cont.innerHTML = "";
+
+  if (list.length === 0) {
+    $("empty-list").style.display = "block";
+    return;
+  }
+  $("empty-list").style.display = "none";
+
+  for (const exp of list) {
+    const badge = exp.estado === "pendiente" ? "pend"
+                : exp.estado === "visitado" ? "vis" : "env";
+    const dir = exp.datos.direccion || "(sin dirección)";
+    const muni = exp.datos.municipio ? ", " + exp.datos.municipio : "";
+    const nombre = exp.datos.nombre || "(sin nombre)";
+    const fechaStr = exp.datos.fechaVisita
+      ? "Visita: " + exp.datos.fechaVisita
+      : ("Últ. mod: " + formatFecha(exp.fechaActualizacion));
+    const pendSync = exp.pendienteSync ? " · ↑ pendiente" : "";
+
+    const item = document.createElement("div");
+    item.className = "list-item";
+    item.innerHTML = `
+      <div class="li-title">${escape(dir)}${escape(muni)}</div>
+      <div class="li-sub">${escape(nombre)}</div>
+      <div class="li-meta">
+        <span>${escape(fechaStr)}${escape(pendSync)}</span>
+        <span class="badge ${badge}">${escape(exp.estado)}</span>
+      </div>
+    `;
+    item.onclick = () => abrirExpediente(exp.id);
+    cont.appendChild(item);
+  }
+}
+
+function escape(s){
+  return String(s == null ? "" : s)
+    .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+
+function formatFecha(iso){
+  if (!iso) return "—";
+  try {
+    const d = new Date(iso);
+    return d.toLocaleDateString("es-ES") + " " + d.toLocaleTimeString("es-ES",{hour:"2-digit",minute:"2-digit"});
+  } catch(e) { return "—"; }
+}
+
+// ============================================================================
+// ABRIR EXPEDIENTE
+// ============================================================================
+async function abrirExpediente(id){
+  const exp = await dbGet("expedientes", id);
+  if (!exp) { toast("Expediente no encontrado"); return; }
+  state.expCurrent = exp;
+  rellenarFormDatos(exp);
+  rellenarChecklist(exp);
+  $("datos-title").textContent = exp.datos.direccion || "Expediente";
+  go("datos");
+}
+
+// ============================================================================
+// IMPORTAR DESDE FORMULARIO WEB
+// ============================================================================
+async function mostrarImportar(){
+  go("importar");
+  await cargarSolicitudes();
+}
+
+async function cargarSolicitudes(){
+  const cont = $("list-solicitudes");
+  cont.innerHTML = "<p class='muted'>Cargando…</p>";
+  $("empty-sol").style.display = "none";
+
+  try {
+    const res = await apiListarSolicitudes();
+    cont.innerHTML = "";
+    if (!res || res.status !== "ok") {
+      cont.innerHTML = "<p class='muted'>Error: " + escape(res && res.message || "desconocido") + "</p>";
+      return;
+    }
+    const sols = res.solicitudes || [];
+    if (sols.length === 0) {
+      $("empty-sol").style.display = "block";
+      return;
+    }
+    for (const s of sols) {
+      const item = document.createElement("div");
+      item.className = "list-item";
+      const dir = s.direccion || "(sin dirección)";
+      const muni = s.municipio ? ", " + s.municipio : "";
+      item.innerHTML = `
+        <div class="li-title">${escape(dir)}${escape(muni)}</div>
+        <div class="li-sub">${escape(s.nombre || "")}</div>
+        <div class="li-meta">
+          <span>${escape(s.fecha || "")}</span>
+          <span class="badge ${s.estado === "visitado" ? "vis" : "pend"}">${escape(s.estado || "pendiente")}</span>
+        </div>
+      `;
+      item.onclick = () => importarSolicitud(s.id);
+      cont.appendChild(item);
+    }
+  } catch(e) {
+    cont.innerHTML = "<p class='muted'>No se pudo conectar: " + escape(e.message) + "</p>";
+  }
+}
+
+async function importarSolicitud(id){
+  toast("Importando solicitud…");
+  try {
+    const res = await apiDetalleSolicitud(id);
+    if (!res || res.status !== "ok" || !res.solicitud) {
+      toast("No se pudo cargar la solicitud");
+      return;
+    }
+    const s = res.solicitud;
+
+    // Comprobar si ya existe un expediente para esta solicitud
+    const todos = await dbGetAll("expedientes");
+    let exp = todos.find(e => e.solicitudId === String(id));
+    if (!exp) {
+      exp = nuevoExpedienteVacio();
+      exp.origen = "formulario";
+      exp.solicitudId = String(id);
+    }
+    exp.datos.nombre = s.nombre || "";
+    exp.datos.tipoDocumento = s.tipoDocumento || "DNI";
+    exp.datos.numeroDocumento = s.numeroDocumento || "";
+    exp.datos.telefono = s.telefono || "";
+    exp.datos.email = s.email || "";
+    exp.datos.direccion = s.direccion || "";
+    exp.datos.municipio = matchMuni(s.municipio);
+    exp.datos.codigoPostal = s.codigoPostal || "";
+    exp.datos.referenciaCatastral = s.referenciaCatastral || "";
+    exp.datos.fechaVisita = normalizarFecha(s.fechaVisita);
+    exp.datos.observaciones = s.observaciones || "";
+
+    await guardarExpedienteLocal(exp);
+    state.expCurrent = exp;
+
+    // Intentar push inmediato
+    pushExpediente(exp).catch(()=>{});
+
+    rellenarFormDatos(exp);
+    rellenarChecklist(exp);
+    $("datos-title").textContent = exp.datos.direccion || "Expediente importado";
+    go("datos");
+    toast("Solicitud importada ✓");
+  } catch(e) {
+    toast("Error al importar: " + e.message);
+  }
+}
+
+function matchMuni(m){
+  if (!m) return "";
+  const target = String(m).trim().toLowerCase();
+  for (const opt of MUNIS) {
+    if (opt.toLowerCase() === target) return opt;
+  }
+  return "Otro";
+}
+
+function normalizarFecha(f){
+  if (!f) return "";
+  try {
+    if (/^\d{4}-\d{2}-\d{2}/.test(f)) return f.slice(0,10);
+    const d = new Date(f);
+    if (!isNaN(d)) return d.toISOString().slice(0,10);
+  } catch(e){}
+  return "";
+}
+
+// ============================================================================
+// FORMULARIO DATOS
+// ============================================================================
+function rellenarFormDatos(exp){
+  const d = exp.datos;
+  $("f-nombre").value = d.nombre || "";
+  $("f-tipodoc").value = d.tipoDocumento || "DNI";
+  $("f-numdoc").value = d.numeroDocumento || "";
+  $("f-tel").value = d.telefono || "";
+  $("f-email").value = d.email || "";
+  $("f-direccion").value = d.direccion || "";
+
+  // Poblar municipios
+  const sel = $("f-muni");
+  sel.innerHTML = MUNIS.map(m => `<option value="${escape(m)}"${m===d.municipio?" selected":""}>${escape(m||"—")}</option>`).join("");
+
+  $("f-cp").value = d.codigoPostal || "";
+  $("f-refcat").value = d.referenciaCatastral || "";
+  $("f-fechavisita").value = d.fechaVisita || "";
+  $("f-obs").value = d.observaciones || "";
+}
+
+function leerFormDatos(exp){
+  exp.datos.nombre = $("f-nombre").value.trim();
+  exp.datos.tipoDocumento = $("f-tipodoc").value;
+  exp.datos.numeroDocumento = $("f-numdoc").value.trim();
+  exp.datos.telefono = $("f-tel").value.trim();
+  exp.datos.email = $("f-email").value.trim();
+  exp.datos.direccion = $("f-direccion").value.trim();
+  exp.datos.municipio = $("f-muni").value;
+  exp.datos.codigoPostal = $("f-cp").value.trim();
+  exp.datos.referenciaCatastral = $("f-refcat").value.trim();
+  exp.datos.fechaVisita = $("f-fechavisita").value;
+  exp.datos.observaciones = $("f-obs").value.trim();
+}
+
+// ============================================================================
+// CHECKLIST
+// ============================================================================
+function rellenarChecklist(exp){
+  const c = exp.checklist;
+  $("c-envolvente").value = c.envolvente || "";
+  $("c-calef-sis").value = c.calefSistema || "";
+  $("c-calef-pct").value = c.calefPct || "";
+  $("c-refri-sis").value = c.refriSistema || "";
+  $("c-refri-pct").value = c.refriPct || "";
+  $("c-acs").value = c.acs || "";
+  $("c-ren-tipo").value = c.renTipo || "";
+  $("c-ren-kw").value = c.renKw || "";
+  $("c-obs").value = c.observaciones || "";
+
+  // Fotos
+  if (exp.fotos.fachada) {
+    $("fachada-preview").src = exp.fotos.fachada;
+    $("fachada-preview").style.display = "block";
+    $("fachada-info").textContent = "Guardada";
+  } else {
+    $("fachada-preview").style.display = "none";
+    $("fachada-info").textContent = "—";
+  }
+  if (exp.fotos.croq1) {
+    $("croq1-preview").src = exp.fotos.croq1;
+    $("croq1-preview").style.display = "block";
+    $("croq1-info").textContent = "Guardado";
+  } else {
+    $("croq1-preview").style.display = "none";
+    $("croq1-info").textContent = "—";
+  }
+  if (exp.fotos.croq2) {
+    $("croq2-preview").src = exp.fotos.croq2;
+    $("croq2-preview").style.display = "block";
+    $("croq2-info").textContent = "Guardado";
+  } else {
+    $("croq2-preview").style.display = "none";
+    $("croq2-info").textContent = "—";
+  }
+}
+
+function leerChecklist(exp){
+  const c = exp.checklist;
+  c.envolvente = $("c-envolvente").value.trim();
+  c.calefSistema = $("c-calef-sis").value;
+  c.calefPct = $("c-calef-pct").value;
+  c.refriSistema = $("c-refri-sis").value;
+  c.refriPct = $("c-refri-pct").value;
+  c.acs = $("c-acs").value;
+  c.renTipo = $("c-ren-tipo").value;
+  c.renKw = $("c-ren-kw").value;
+  c.observaciones = $("c-obs").value.trim();
+}
+
+// ============================================================================
+// FOTOS
+// ============================================================================
+function setupFotoInput(btnId, inputId, key){
+  $(btnId).onclick = () => $(inputId).click();
+  $(inputId).onchange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const dataUrl = await redimensionar(file, 1600, 0.85);
+    if (!state.expCurrent) return;
+    state.expCurrent.fotos[key] = dataUrl;
+    rellenarChecklist(state.expCurrent);
+    toast("Imagen guardada");
+  };
+}
+
+function redimensionar(file, maxDim, quality){
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        let w = img.width, h = img.height;
+        if (w > h && w > maxDim) { h = h * maxDim / w; w = maxDim; }
+        else if (h > maxDim) { w = w * maxDim / h; h = maxDim; }
+        const canvas = document.createElement("canvas");
+        canvas.width = w; canvas.height = h;
+        canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL("image/jpeg", quality));
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
   });
-  c.innerHTML=h;c._sols=sols;
-  c.querySelectorAll(".import-item").forEach(function(el){
-    el.onclick=function(){var idx=parseInt(el.getAttribute("data-idx"));var sol=c._sols[idx];cargarSolicitudEnExp(sol);toast("Solicitud importada");renderDatos();go("datos")}});
 }
 
-// ======================== HOME ========================
-screens.home=function(){cargarExpedientesDelSheets()};
-function renderHome(){
-  $("btn-expedientes").onclick=function(){cargarExpedientesDelSheets();renderExpedientes();go("expedientes")};
-  $("btn-nuevo").onclick=function(){cur=mkExp();isNew=true;renderDatos();go("datos")};
+// ============================================================================
+// EMAIL AL COLABORADOR
+// ============================================================================
+async function abrirPantallaEmail(){
+  if (!state.expCurrent) return;
+  const exp = state.expCurrent;
+  const cfg = await getCfg();
+
+  $("e-to").value = cfg.emailColab || "";
+  const dir = exp.datos.direccion || "";
+  $("e-asunto").value = "CEE · Datos de visita · " + dir;
+
+  const c = exp.checklist;
+  const cuerpo =
+`Hola,
+
+Adjunto los datos de la visita para el certificado energético:
+
+DATOS DEL INMUEBLE
+- Cliente: ${exp.datos.nombre}
+- Dirección: ${exp.datos.direccion}
+- Municipio: ${exp.datos.municipio} (CP ${exp.datos.codigoPostal})
+- Ref. catastral: ${exp.datos.referenciaCatastral}
+- Fecha de visita: ${exp.datos.fechaVisita}
+
+CHECKLIST
+- Envolvente: ${c.envolvente || "—"}
+- Calefacción: ${c.calefSistema || "—"} (${c.calefPct || 0}% vivienda)
+- Refrigeración: ${c.refriSistema || "—"} (${c.refriPct || 0}% vivienda)
+- ACS: ${c.acs || "—"}
+- Renovables: ${c.renTipo || "—"}${c.renKw ? " (" + c.renKw + " kW)" : ""}
+- Observaciones: ${c.observaciones || "—"}
+
+${cfg.firma || ""}`;
+
+  $("e-body").value = cuerpo;
+  go("email");
 }
 
-async function cargarExpedientesDelSheets(){
-  try{var url=SCRIPT_URL+"?action=listar_expedientes";var data=await fetchJSONP(url);exps=data.expedientes||[];exps.sort(function(a,b){return new Date(b.fecha)-new Date(a.fecha)});
-  $("stat-p").textContent=exps.filter(function(e){return e.estado==="pendiente"}).length;
-  $("stat-v").textContent=exps.filter(function(e){return e.estado==="visitado"}).length;
-  $("stat-e").textContent=exps.filter(function(e){return e.estado==="enviado"}).length}catch(e){console.log("Error cargando expedientes: "+e)}}
+async function enviarEmail(){
+  if (!state.expCurrent) return;
+  const to = $("e-to").value.trim();
+  const asunto = $("e-asunto").value.trim();
+  const body = $("e-body").value;
+  if (!to) { toast("Falta destinatario"); return; }
 
-// EXPEDIENTES
-screens.expedientes=function(){renderExpedientes()};
-function renderExpedientes(){
-  var c=$("exp-list");
-  if(exps.length===0){c.innerHTML='<div style="text-align:center;padding:40px;color:#bbb">No hay expedientes.</div>';return}
-  var h="";exps.forEach(function(e){
-    var bc=e.estado==="pendiente"?"badge-p":e.estado==="visitado"?"badge-v":"badge-e";
-    h+='<div class="exp-item" data-id="'+e.id+'">';
-    h+='<div class="exp-addr">'+(e.direccion||"Sin dirección")+'</div>';
-    h+='<div class="exp-cli">'+(e.numExp?"Exp. "+e.numExp+" — ":"")+(e.nombre||"Sin nombre")+'</div>';
-    h+='<div class="exp-meta"><span class="badge '+bc+'">'+e.estado.charAt(0).toUpperCase()+e.estado.slice(1)+'</span><span class="exp-ref">'+fmtDate(e.fecha)+'</span></div>';
-    h+='</div>';
+  // Abrir cliente de correo
+  const mailto = "mailto:" + encodeURIComponent(to)
+    + "?subject=" + encodeURIComponent(asunto)
+    + "&body=" + encodeURIComponent(body);
+  window.location.href = mailto;
+
+  // Marcar como enviado
+  state.expCurrent.estado = "enviado";
+  await guardarExpedienteLocal(state.expCurrent);
+  pushExpediente(state.expCurrent).catch(()=>{});
+
+  // Actualizar también solicitud origen si viene del formulario
+  if (state.expCurrent.solicitudId) {
+    apiActualizarEstadoSolicitud(state.expCurrent.solicitudId, "enviado").catch(()=>{});
+  }
+
+  toast("Email abierto · expediente marcado como enviado");
+}
+
+// ============================================================================
+// CONFIGURACIÓN UI
+// ============================================================================
+async function cargarCfgUI(){
+  const cfg = await getCfg();
+  $("cfg-url").value = cfg.scriptUrl || DEFAULT_SCRIPT_URL;
+  $("cfg-colab").value = cfg.emailColab || "";
+  $("cfg-firma").value = cfg.firma || "";
+  $("sync-info").textContent = cfg.lastSync
+    ? "Última sincronización: " + formatFecha(cfg.lastSync)
+    : "Sin sincronizar todavía";
+}
+
+async function guardarCfgUI(){
+  const cfg = await getCfg();
+  cfg.scriptUrl = $("cfg-url").value.trim() || DEFAULT_SCRIPT_URL;
+  cfg.emailColab = $("cfg-colab").value.trim();
+  cfg.firma = $("cfg-firma").value;
+  await saveCfg(cfg);
+  toast("Configuración guardada");
+}
+
+async function testConexion(){
+  showSync("Probando conexión…");
+  try {
+    const res = await apiStatus();
+    hideSync();
+    if (res && res.status === "ok") {
+      setStatus(true);
+      toast("✓ Conectado · " + (res.service || "OK") + " v" + (res.version || "?"));
+    } else {
+      toast("Respuesta inesperada: " + JSON.stringify(res));
+    }
+  } catch(e) {
+    hideSync();
+    setStatus(false);
+    toast("Sin conexión: " + e.message);
+  }
+}
+
+// ============================================================================
+// INICIALIZACIÓN Y EVENTOS
+// ============================================================================
+async function init(){
+  // Service worker
+  if ("serviceWorker" in navigator) {
+    try { await navigator.serviceWorker.register("sw.js?v=5"); } catch(e) {}
+  }
+
+  // Volver atrás
+  document.querySelectorAll("[data-go]").forEach(btn => {
+    btn.onclick = () => go(btn.getAttribute("data-go"));
   });
-  c.innerHTML=h;
-  c.querySelectorAll(".exp-item").forEach(function(el){
-    el.onclick=function(){var id=el.getAttribute("data-id");cur=JSON.parse(JSON.stringify(exps.find(function(e){return e.id===id})));isNew=false;renderDatos();go("datos")}});
+
+  // Tabs home
+  document.querySelectorAll(".tab").forEach(tab => {
+    tab.onclick = () => {
+      document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+      tab.classList.add("active");
+      state.currentTab = tab.getAttribute("data-tab");
+      renderHome();
+    };
+  });
+
+  // Botones home
+  $("btn-nuevo").onclick = () => go("nuevo");
+  $("btn-sync").onclick = () => sincronizar();
+  $("btn-cfg").onclick = async () => { await cargarCfgUI(); go("cfg"); };
+
+  // Nuevo expediente
+  $("btn-origen-web").onclick = () => mostrarImportar();
+  $("btn-origen-manual").onclick = () => {
+    state.expCurrent = nuevoExpedienteVacio();
+    rellenarFormDatos(state.expCurrent);
+    rellenarChecklist(state.expCurrent);
+    $("datos-title").textContent = "Nuevo expediente";
+    go("datos");
+  };
+
+  // Importar
+  $("btn-importar-reload").onclick = () => cargarSolicitudes();
+
+  // Datos → Checklist
+  $("btn-ir-checklist").onclick = async () => {
+    if (!state.expCurrent) return;
+    leerFormDatos(state.expCurrent);
+    await guardarExpedienteLocal(state.expCurrent);
+    pushExpediente(state.expCurrent).catch(()=>{});
+    go("checklist");
+  };
+
+  // Checklist → Guardar
+  $("btn-guardar").onclick = async () => {
+    if (!state.expCurrent) return;
+    leerChecklist(state.expCurrent);
+    state.expCurrent.estado = state.expCurrent.estado === "enviado" ? "enviado" : "visitado";
+    await guardarExpedienteLocal(state.expCurrent);
+    const ok = await pushExpediente(state.expCurrent);
+    toast(ok ? "Guardado y sincronizado ✓" : "Guardado en local (pendiente de subir)");
+    renderHome();
+    go("home");
+  };
+
+  // Checklist → Enviar
+  $("btn-enviar").onclick = async () => {
+    if (!state.expCurrent) return;
+    leerChecklist(state.expCurrent);
+    await guardarExpedienteLocal(state.expCurrent);
+    await abrirPantallaEmail();
+  };
+
+  // Email
+  $("btn-email-send").onclick = () => enviarEmail();
+
+  // Fotos
+  setupFotoInput("btn-foto-fachada", "inp-fachada", "fachada");
+  setupFotoInput("btn-croquis-1", "inp-croq1", "croq1");
+  setupFotoInput("btn-croquis-2", "inp-croq2", "croq2");
+
+  // Config
+  $("btn-save-cfg").onclick = () => guardarCfgUI();
+  $("btn-sync-now").onclick = () => sincronizar();
+  $("btn-test-conn").onclick = () => testConexion();
+  $("btn-reset-local").onclick = async () => {
+    if (!confirm("¿Seguro que quieres borrar todos los datos locales? Los expedientes en el servidor no se tocarán.")) return;
+    await dbClear("expedientes");
+    toast("Datos locales borrados");
+    renderHome();
+  };
+
+  // Online/offline
+  window.addEventListener("online", () => { setStatus(true); sincronizar(); });
+  window.addEventListener("offline", () => setStatus(false));
+  setStatus(navigator.onLine);
+
+  // Render inicial
+  await renderHome();
+
+  // Si viene con ?id=... importa esa solicitud directamente
+  const params = new URLSearchParams(location.search);
+  const idParam = params.get("id");
+  if (idParam) {
+    await mostrarImportar();
+    await importarSolicitud(idParam);
+  }
+
+  // Sincronización inicial en segundo plano
+  if (navigator.onLine) {
+    setTimeout(() => sincronizar(), 500);
+  }
 }
 
-// DATOS
-screens.datos=function(){renderDatos()};
-function renderDatos(){
-  $("datos-title").textContent=isNew?"Nuevo expediente":"Editar expediente";
-  if(isNew){show("method-section")}else{hide("method-section")}
-  ["numExp","nombre","dni","telefono","direccion","cp","refCatastral"].forEach(function(f){val("d-"+f,cur[f])});
-  val("d-municipio",cur.municipio);
-  if(cur.municipio==="Otro"){show("d-municipioOtro-wrap");val("d-municipioOtro",cur.municipioOtro)}else{hide("d-municipioOtro-wrap")}
-  $("d-municipio").onchange=function(){cur.municipio=this.value;if(this.value==="Otro"){show("d-municipioOtro-wrap")}else{hide("d-municipioOtro-wrap")}};
-  ["numExp","nombre","dni","telefono","direccion","cp","refCatastral","municipioOtro"].forEach(function(f){var el=$("d-"+f);if(el)el.oninput=function(){cur[f]=this.value}});
-  $("btn-to-visita").onclick=function(){cur.municipio=val("d-municipio");renderVisita();go("visita")};
-  var btnImport=$("btn-import-web");if(btnImport){btnImport.onclick=function(){if(!navigator.onLine){toast("Necesitas internet");return}mostrarSolicitudesPendientes()}}
-}
+document.addEventListener("DOMContentLoaded", init);
 
-// VISITA
-screens.visita=function(){renderVisita()};
-function renderVisita(){
-  val("v-tipoViv",cur.tipoViv);$("v-tipoViv").onchange=function(){cur.tipoViv=this.value};
-  var ckRef=$("v-reforma-ck");ckRef.className="ck-box"+(cur.reformaImportante?" checked":"");ckRef.textContent=cur.reformaImportante?"✓":"";
-  ckRef.onclick=function(){cur.reformaImportante=!cur.reformaImportante;renderVisita()};
-  if(cur.reformaImportante){show("v-reformaAnyo-wrap");val("v-reformaAnyo",cur.reformaAnyo)}else{hide("v-reformaAnyo-wrap")}
-  $("v-reformaAnyo").oninput=function(){cur.reformaAnyo=this.value};
-  ["fachadaAislamiento","carpinteria","acristalamiento","permeabilidad","techo","techoAislada","suelo"].forEach(function(f){
-    var el=$("v-"+f);if(el){val("v-"+f,cur[f]);el.onchange=function(){cur[f]=this.value}}});
-  val("v-murosEspesor",cur.murosEspesor);$("v-murosEspesor").oninput=function(){cur.murosEspesor=this.value};
-  val("v-calTipo",cur.calTipo);$("v-calTipo").onchange=function(){cur.calTipo=this.value;renderVisita()};
-  if(cur.calTipo==="No tiene instalada"){hide("cal-fields")}else{show("cal-fields")}
-  ["calComb","calDist","calAntig"].forEach(function(f){var el=$("v-"+f);if(el){val("v-"+f,cur[f]);el.onchange=function(){cur[f]=this.value}}});
-  ["calPct","calPotencia","calRendimiento"].forEach(function(f){var el=$("v-"+f);if(el){val("v-"+f,cur[f]);el.oninput=function(){cur[f]=this.value}}});
-  val("v-refTipo",cur.refTipo);$("v-refTipo").onchange=function(){cur.refTipo=this.value;renderVisita()};
-  if(cur.refTipo==="No tiene instalada"){hide("ref-fields")}else{show("ref-fields")}
-  ["refComb","refAntig"].forEach(function(f){var el=$("v-"+f);if(el){val("v-"+f,cur[f]);el.onchange=function(){cur[f]=this.value}}});
-  ["refPct","refPotencia","refRendimiento"].forEach(function(f){var el=$("v-"+f);if(el){val("v-"+f,cur[f]);el.oninput=function(){cur[f]=this.value}}});
-  ["acsTipo","acsModalidad","acsAcum","acsComb"].forEach(function(f){var el=$("v-"+f);if(el){val("v-"+f,cur[f]);el.onchange=function(){cur[f]=this.value}}});
-  var ckMixta=$("v-acsMixta-ck");ckMixta.className="ck-box"+(cur.acsMixta?" checked":"");ckMixta.textContent=cur.acsMixta?"✓":"";
-  ckMixta.onclick=function(){cur.acsMixta=!cur.acsMixta;renderVisita()};
-  var ckRen=$("v-ren-ck");ckRen.className="ck-box"+(cur.renPaneles?" checked":"");ckRen.textContent=cur.renPaneles?"✓":"";
-  ckRen.onclick=function(){cur.renPaneles=!cur.renPaneles;renderVisita()};
-  if(cur.renPaneles){show("ren-fields")}else{hide("ren-fields")}
-  val("v-renPotencia",cur.renPotencia);$("v-renPotencia").oninput=function(){cur.renPotencia=this.value};
-  val("v-renAnyo",cur.renAnyo);$("v-renAnyo").oninput=function(){cur.renAnyo=this.value};
-  setupPhoto("fFach","photo-fachada","file-fachada","Fachada");setupPhoto("fDet","photo-detalle","file-detalle","Detalle");
-  setupCroquis("fCroq1","photo-croq1","file-croq1-cam","file-croq1-file","btn-croq1-cam","btn-croq1-file","Croquis 1");
-  setupCroquis("fCroq2","photo-croq2","file-croq2-cam","file-croq2-file","btn-croq2-cam","btn-croq2-file","Croquis 2");
-  val("v-obs",cur.obs);$("v-obs").oninput=function(){cur.obs=this.value};
-  $("btn-to-guardar").onclick=function(){renderGuardar();go("guardar")};
-}
-
-function setupPhoto(field,slotId,fileId,label){
-  var slot=$(slotId);var fileEl=$(fileId);
-  if(cur[field]){slot.className="photo-slot has";slot.innerHTML='<img src="'+cur[field]+'" alt="">'}
-  else{slot.className="photo-slot";slot.innerHTML='<span style="color:#bbb"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg></span><span class="pl">'+label+'</span>'}
-  slot.onclick=function(){fileEl.click()};
-  fileEl.onchange=function(e){var file=e.target.files&&e.target.files[0];if(!file)return;var reader=new FileReader();reader.onload=function(ev){cur[field]=ev.target.result;renderVisita()};reader.readAsDataURL(file)};
-}
-
-function setupCroquis(field,slotId,camFileId,uploadFileId,camBtnId,uploadBtnId,label){
-  var slot=$(slotId);var camFile=$(camFileId);var uploadFile=$(uploadFileId);
-  if(cur[field]){slot.className="photo-slot has";
-    if(cur[field].indexOf("data:application/pdf")===0){slot.innerHTML='<span style="color:#4A8A80"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/></svg></span><span class="pl">PDF cargado</span>'}
-    else{slot.innerHTML='<img src="'+cur[field]+'" alt="">'}
-  }else{slot.className="photo-slot";slot.innerHTML='<span style="color:#bbb"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="20" height="20" rx="2"/><path d="M2 16l5-5 4 4 4-4 7 7"/></svg></span><span class="pl">'+label+'</span>'}
-  $(camBtnId).onclick=function(){camFile.click()};$(uploadBtnId).onclick=function(){uploadFile.click()};
-  function handleFile(e){var file=e.target.files&&e.target.files[0];if(!file)return;var reader=new FileReader();reader.onload=function(ev){cur[field]=ev.target.result;renderVisita()};reader.readAsDataURL(file)}
-  camFile.onchange=handleFile;uploadFile.onchange=handleFile;
-}
-
-// GUARDAR
-screens.guardar=function(){renderGuardar()};
-function renderGuardar(){
-  html("sum-nombre",cur.nombre||"—");html("sum-dir",cur.direccion||"—");html("sum-muni",getMuni()||"—");
-  html("sum-tipo",cur.tipoViv||"—");html("sum-numexp",cur.numExp||"—");
-  if(cur.reformaImportante){html("sum-reforma","Sí — Año "+(cur.reformaAnyo||"?"));show("sum-reforma-row")}else{hide("sum-reforma-row")}
-  html("sum-fachada",(cur.fachadaAislamiento||"—")+(cur.murosEspesor?" ("+cur.murosEspesor+" cm)":""));
-  html("sum-huecos",(cur.carpinteria||"—")+" / "+(cur.acristalamiento||"—")+" / "+(cur.permeabilidad||"—"));
-  html("sum-techo",(cur.techo||"—")+(cur.techoAislada?" (aisl: "+cur.techoAislada+")":""));
-  html("sum-suelo",cur.suelo||"—");
-  var nC=cur.calTipo==="No tiene instalada",nR=cur.refTipo==="No tiene instalada";
-  html("sum-cal",nC?"No tiene":(cur.calTipo||"—")+(cur.calPct?" "+cur.calPct+"%":""));
-  html("sum-ref",nR?"No tiene":(cur.refTipo||"—")+(cur.refPct?" "+cur.refPct+"%":""));
-  html("sum-acs",(cur.acsTipo||"—")+" "+(cur.acsModalidad||"")+(cur.acsMixta?" (mixta)":""));
-  html("sum-ren",cur.renPaneles?cur.renPotencia+" kW":"No");
-  html("sum-fotos",[cur.fFach&&"fachada",cur.fDet&&"detalle"].filter(Boolean).join(", ")||"—");
-  html("sum-croq",[cur.fCroq1&&"croquis 1",cur.fCroq2&&"croquis 2"].filter(Boolean).join(", ")||"—");
-  html("g-email-to",cfg.email||"sin configurar");
-  if(cur.fCroq1){show("dl-croq1")}else{hide("dl-croq1")}if(cur.fCroq2){show("dl-croq2")}else{hide("dl-croq2")}
-  $("dl-checklist").onclick=dlChecklist;$("dl-croq1").onclick=function(){dlCroquis(1)};$("dl-croq2").onclick=function(){dlCroquis(2)};
-  $("btn-save").onclick=doSave;$("btn-preview-email").onclick=function(){renderEmail();go("email")};
-  $("btn-cfg-email").onclick=function(){renderCfg();go("cfgmail")};$("btn-gmail-draft").onclick=createGmailDraft;
-}
-
-function genAsunto(){return"CEE ("+(cur.numExp||"")+")"+"_"+(cur.direccion||"")}
-function genBody(){
-  var nC=cur.calTipo==="No tiene instalada",nR=cur.refTipo==="No tiene instalada";
-  var t="Datos de la visita CEE\n\nNº Expediente: "+(cur.numExp||"—")+"\nDirección: "+cur.direccion+", CP "+cur.cp+"\nCliente: "+cur.nombre+" — DNI: "+cur.dni+"\nRef. catastral: "+cur.refCatastral+"\nMunicipio: "+getMuni()+"\nTipo: "+cur.tipoViv+(cur.reformaImportante?" — Reforma: Sí, año "+cur.reformaAnyo:"")+"\n\n--- ENVOLVENTE ---\nAislamiento fachada: "+(cur.fachadaAislamiento||"—")+(cur.murosEspesor?" ("+cur.murosEspesor+" cm)":"")+"\nCarpintería: "+(cur.carpinteria||"—")+" / "+(cur.acristalamiento||"—")+" / "+(cur.permeabilidad||"—")+"\nTecho: "+(cur.techo||"—")+(cur.techoAislada?" (aislada: "+cur.techoAislada+")":"")+"\nSuelo: "+(cur.suelo||"—");
-  t+="\n\n--- CALEFACCIÓN ---\n"+(nC?"No tiene instalada":"Tipo: "+(cur.calTipo||"—")+"\nCombustible: "+(cur.calComb||"—")+"\nDistribución: "+(cur.calDist||"—")+"\nAntigüedad: "+(cur.calAntig||"—")+"\nPotencia: "+(cur.calPotencia?cur.calPotencia+" kW":"—")+"\nRendimiento: "+(cur.calRendimiento||"—")+"\n% vivienda: "+(cur.calPct?cur.calPct+"%":"—"));
-  t+="\n\n--- REFRIGERACIÓN ---\n"+(nR?"No tiene instalada":"Tipo: "+(cur.refTipo||"—")+"\nCombustible: "+(cur.refComb||"—")+"\nAntigüedad: "+(cur.refAntig||"—")+"\nPotencia: "+(cur.refPotencia?cur.refPotencia+" kW":"—")+"\nRendimiento: "+(cur.refRendimiento||"—")+"\n% climatizada: "+(cur.refPct?cur.refPct+"%":"—"));
-  t+="\n\n--- ACS ---\nTipo: "+(cur.acsTipo||"—")+"\nModalidad: "+(cur.acsModalidad||"—")+(cur.acsMixta?" (mixta)":"")+"\nAcumulación: "+(cur.acsAcum||"—")+"\nCombustible: "+(cur.acsComb||"—");
-  t+="\n\n--- RENOVABLES ---\nPaneles: "+(cur.renPaneles?"Sí — "+cur.renPotencia+" kW — Año: "+cur.renAnyo:"No");
-  t+="\n\nObs: "+(cur.obs||"sin observaciones")+"\n\n"+cfg.firma;
-  return t;
-}
-
-async function doSave(){
-  if(cur.estado==="pendiente")cur.estado="visitado";
-  var payload=JSON.stringify(cur);
-  try{var resp=await fetch(SCRIPT_URL,{method:"POST",body:payload});toast("Expediente guardado");exps.push(JSON.parse(JSON.stringify(cur)));exps.sort(function(a,b){return new Date(b.fecha)-new Date(a.fecha)});setTimeout(function(){go("home");cargarExpedientesDelSheets()},800)}catch(e){toast("Error: "+e.message)}}
-
-// PDF
-async function dlChecklist(){
-  try{
-    var jsPDF=window.jspdf&&window.jspdf.jsPDF;if(!jsPDF){toast("Cargando PDF...");return}
-    var doc=new jsPDF("p","mm","a4");var y=15,lm=20,pw=170;
-    doc.setFillColor(74,138,128);doc.rect(0,0,210,28,"F");
-    doc.setTextColor(255,255,255);doc.setFontSize(16);doc.setFont("helvetica","bold");doc.text("CHECKLIST VISITA CEE",lm,12);
-    doc.setFontSize(10);doc.setFont("helvetica","normal");doc.text("Joanfe Ribes — Oficina Tècnica",lm,19);
-    if(cur.numExp){doc.setFontSize(12);doc.text("Exp. "+cur.numExp,190,12,{align:"right"})}
-    doc.setFontSize(9);doc.text(new Date().toLocaleDateString("es-ES"),190,19,{align:"right"});
-    y=35;doc.setTextColor(0,0,0);
-    function tt(t){if(y>265){doc.addPage();y=15}doc.setFillColor(74,138,128);doc.rect(lm,y-4,pw,7,"F");doc.setTextColor(255,255,255);doc.setFontSize(10);doc.setFont("helvetica","bold");doc.text(t,lm+3,y+1);doc.setTextColor(0,0,0);y+=10}
-    function rr(l,v){if(y>275){doc.addPage();y=15}doc.setFontSize(9);doc.setFont("helvetica","bold");doc.text(l+":",lm+2,y);doc.setFont("helvetica","normal");doc.text(String(v||"—"),lm+55,y);y+=5.5}
-    tt("DATOS GENERALES");rr("Nº Expediente",cur.numExp);rr("Dirección",cur.direccion+(cur.cp?", CP "+cur.cp:""));rr("Cliente",cur.nombre);rr("DNI",cur.dni);rr("Ref. catastral",cur.refCatastral);rr("Municipio",getMuni());rr("Tipo",cur.tipoViv);
-    if(cur.reformaImportante)rr("Reforma","Sí — Año "+cur.reformaAnyo);y+=3;
-    tt("ENVOLVENTE — MUROS");rr("Aislamiento fachada",cur.fachadaAislamiento||"—");rr("Espesor",cur.murosEspesor?cur.murosEspesor+" cm":"—");y+=2;
-    tt("ENVOLVENTE — HUECOS");rr("Carpintería",cur.carpinteria);rr("Acristalamiento",cur.acristalamiento);rr("Permeabilidad",cur.permeabilidad);y+=2;
-    tt("CUBIERTA Y SUELO");rr("Techo",cur.techo+(cur.techoAislada?" (aislada: "+cur.techoAislada+")":""));rr("Suelo",cur.suelo);y+=3;
-    var noCal=cur.calTipo==="No tiene instalada";tt("CALEFACCIÓN");
-    if(noCal){rr("Sistema","No tiene")}else{rr("Tipo",cur.calTipo);rr("Combustible",cur.calComb);rr("Distribución",cur.calDist);rr("Antigüedad",cur.calAntig);rr("% vivienda",cur.calPct?cur.calPct+"%":"—");rr("Potencia",cur.calPotencia?cur.calPotencia+" kW":"—");rr("Rendimiento",cur.calRendimiento||"—")}y+=3;
-    var noRef=cur.refTipo==="No tiene instalada";tt("REFRIGERACIÓN");
-    if(noRef){rr("Sistema","No tiene")}else{rr("Tipo",cur.refTipo);rr("Combustible",cur.refComb);rr("Antigüedad",cur.refAntig);rr("% climatizada",cur.refPct?cur.refPct+"%":"—");rr("Potencia",cur.refPotencia?cur.refPotencia+" kW":"—");rr("Rendimiento",cur.refRendimiento||"—")}y+=3;
-    tt("ACS");rr("Tipo",cur.acsTipo);rr("Modalidad",cur.acsModalidad+(cur.acsMixta?" (mixta)":""));rr("Acumulación",cur.acsAcum);rr("Combustible",cur.acsComb);y+=3;
-    tt("RENOVABLES");if(cur.renPaneles){rr("Paneles","Sí");rr("Potencia",cur.renPotencia+" kW");rr("Año",cur.renAnyo)}else{rr("Paneles","No")}y+=3;
-    tt("OBSERVACIONES");doc.setFontSize(9);doc.setFont("helvetica","normal");var lines=doc.splitTextToSize(cur.obs||"Sin observaciones",pw-6);doc.text(lines,lm+3,y);
-    var pages=doc.getNumberOfPages();for(var i=1;i<=pages;i++){doc.setPage(i);doc.setFillColor(74,138,128);doc.rect(0,287,210,10,"F");doc.setTextColor(255,255,255);doc.setFontSize(8);doc.text("Joanfe Ribes Oficina Tècnica — joanferibes@gmail.com — Plaça Major, 15 · 2n · Pedreguer · 03750",105,293,{align:"center"})}
-    doc.save("checklist_CEE_"+(cur.numExp||"sin")+".pdf");toast("PDF descargado");
-  }catch(e){toast("Error: "+e.message)}}
-
-async function dlCroquis(num){
-  var data=num===1?cur.fCroq1:cur.fCroq2;if(!data){toast("No hay croquis "+num);return}
-  try{
-    if(data.indexOf("data:application/pdf")===0){var a=document.createElement("a");a.href=data;a.download="croquis"+num+"_CEE_"+(cur.numExp||"")+".pdf";a.click();toast("Croquis descargado");return}
-    var jsPDF=window.jspdf&&window.jspdf.jsPDF;if(!jsPDF){toast("Cargando PDF...");return}
-    var doc=new jsPDF("l","mm","a4");
-    doc.setFillColor(74,138,128);doc.rect(0,0,297,12,"F");doc.setTextColor(255,255,255);doc.setFontSize(11);doc.setFont("helvetica","bold");doc.text("CROQUIS "+num+" — "+(cur.direccion||"")+" — Exp. "+(cur.numExp||""),10,8);doc.setFontSize(8);doc.setFont("helvetica","normal");doc.text("Joanfe Ribes",287,8,{align:"right"});
-    var img=new Image();
-    img.onload=function(){var maxW=277,maxH=180,ratio=Math.min(maxW/img.width,maxH/img.height),w=img.width*ratio,h=img.height*ratio,x=(297-w)/2,yy=15+(180-h)/2;doc.addImage(data,"JPEG",x,yy,w,h);doc.save("croquis"+num+"_CEE_"+(cur.numExp||"")+".pdf");toast("Croquis descargado")};
-    img.onerror=function(){toast("Error al cargar imagen")};img.src=data;
-  }catch(e){toast("Error: "+e.message)}}
-
-// GMAIL
-async function createGmailDraft(){
-  if(!cfg.scriptUrl){toast("Configura el Apps Script primero");go("cfgmail");return}
-  toast("Creando borrador...");
-  var payload={to:cfg.email,subject:genAsunto(),body:genBody(),fotoFachada:cur.fFach||"",croquis1:cur.fCroq1||"",croquis2:cur.fCroq2||"",numExp:cur.numExp||"",direccion:cur.direccion||""};
-  try{
-    var resp=await fetch(cfg.scriptUrl,{method:"POST",mode:"no-cors",body:JSON.stringify(payload)});
-    toast("Solicitud enviada a Gmail");cur.estado="enviado";await doSave();
-  }catch(e){try{var form=document.createElement("form");form.method="POST";form.action=cfg.scriptUrl;form.target="_blank";var input=document.createElement("input");input.name="payload";input.value=JSON.stringify(payload);form.appendChild(input);document.body.appendChild(form);form.submit();document.body.removeChild(form);toast("Solicitud enviada");cur.estado="enviado";await doSave()}catch(e2){toast("Error: "+e2.message)}}}
-
-// EMAIL
-screens.email=function(){renderEmail()};
-function renderEmail(){val("e-to",cfg.email);val("e-asunto",genAsunto());val("e-body",genBody());$("btn-email-back").onclick=function(){go("guardar")}}
-
-// CONFIG
-screens.cfgmail=function(){renderCfg()};
-function renderCfg(){
-  val("cfg-email",cfg.email);val("cfg-nombre",cfg.nombre);val("cfg-firma",cfg.firma);val("cfg-scriptUrl",cfg.scriptUrl||"");
-  $("btn-save-cfg").onclick=function(){cfg.email=val("cfg-email");cfg.nombre=val("cfg-nombre");cfg.firma=val("cfg-firma");cfg.scriptUrl=val("cfg-scriptUrl");localStorage.setItem("cfg_email",cfg.email);localStorage.setItem("cfg_nombre",cfg.nombre);localStorage.setItem("cfg_firma",cfg.firma);localStorage.setItem("cfg_scriptUrl",cfg.scriptUrl);toast("Configuración guardada");setTimeout(function(){go("guardar")},600)};
-}
-
-// IMPORTAR
-screens.importar=function(){};
-
-document.addEventListener("DOMContentLoaded",init);
-document.addEventListener("click",function(e){var t=e.target.closest("[data-back]");if(t){go(t.getAttribute("data-back"))}});
 })();
