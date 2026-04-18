@@ -1,25 +1,18 @@
 /* ============================================================================
- * CEE VISITAS · PWA v7
+ * CEE VISITAS · PWA v8 DEFINITIVO
  * Joanfe Ribes Oficina Tècnica
  * ---------------------------------------------------------------------------
- * CAMBIOS sobre v6:
- *  - Municipios ampliados (Marina Alta completa)
- *  - "Otro" → modal para introducir nombre personalizado
- *  - Tipo inmueble: añade "Local"
- *  - Checklist: quita "Tipo fachada"; antigüedad cal/refri = Actual/Antigua
- *  - Refrigeración: Tipo = distribución (Splits/Conductos/Fancoil/Combinado)
- *    y Sistema/energía = Electricidad/Aerotermia
- *  - Combustible: quita GLP
- *  - Fotos: elimina capture forzado (funciona en Surface)
- *  - Nueva "Foto de detalle" opcional (adicional a fachada)
- *  - Firma del titular en canvas (dedo móvil / lápiz tablet, color azul oscuro)
+ * CAMBIOS sobre v7:
+ *  - SIN opción OCR (solo formulario web y manual)
+ *  - Fotos fachada/detalle: getUserMedia (abre cámara directa en Surface/móvil)
+ *  - Croquis: 2 botones separados (Hacer foto / Subir archivo)
+ *  - Renovables: SIN campo "Año instalación"
  * ========================================================================= */
 (function(){
 "use strict";
 
 const DEFAULT_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwPku0mbVvbmkk1j0oSi5gi2picbTmhADFwlJYE2CjCRK5hDmLMc_fW7Jodd3sNPwnPWQ/exec";
 
-// ---------- Municipios (ampliado) ----------
 const MUNIS = ["",
   "Pedreguer","Dénia","Ondara","Xàbia","Teulada","Moraira","Jesús Pobre","Gata de Gorgos",
   "El Verger","El Poble Nou de Benitatxell","Els Poblets",
@@ -43,7 +36,7 @@ const MUNI_ALIAS = {
 };
 
 // ---------- IndexedDB ----------
-const DB_NAME="cee_visitas_v7", DB_VER=1;
+const DB_NAME="cee_visitas_v8", DB_VER=1;
 function openDB(){ return new Promise((res,rej)=>{
   const req=indexedDB.open(DB_NAME,DB_VER);
   req.onupgradeneeded=(e)=>{
@@ -97,7 +90,8 @@ async function saveCfg(c){ c.key="main"; await dbPut("config",c); }
 
 // ---------- Estado ----------
 const state={currentTab:"pendiente", expCurrent:null, online:navigator.onLine,
-  firma:{ctx:null, drawing:false, hasDrawn:false}};
+  firma:{ctx:null, drawing:false, hasDrawn:false},
+  camera:{stream:null, activeKey:null}};
 
 // ---------- Helpers ----------
 const $=(id)=>document.getElementById(id);
@@ -114,7 +108,7 @@ function matchMuni(m){
   const t=String(m).trim().toLowerCase();
   if(MUNI_ALIAS[t]) return MUNI_ALIAS[t];
   for(const o of MUNIS){ if(o && o.toLowerCase()===t) return o; }
-  return "__custom__:" + String(m).trim(); // marca especial: municipio no reconocido
+  return "__custom__:" + String(m).trim();
 }
 function normFecha(f){ if(!f) return ""; try{ if(/^\d{4}-\d{2}-\d{2}/.test(f)) return f.slice(0,10); const d=new Date(f); if(!isNaN(d)) return d.toISOString().slice(0,10);}catch(e){} return ""; }
 
@@ -156,7 +150,7 @@ function nuevoExpedienteVacio(){
       calTipo:"", calComb:"", calDist:"", calAntig:"", calPct:"",
       refTipo:"", refComb:"", refAntig:"", refPct:"",
       acsTipo:"", acsModalidad:"", acsAcum:"", acsComb:"", acsMixta:false,
-      renPaneles:false, renPotencia:"", renAnyo:"",
+      renPaneles:false, renPotencia:"",
       firmaReq:false,
       observaciones:""
     },
@@ -309,7 +303,6 @@ async function importarSolicitud(id){
     exp.datos.referenciaCatastral=s.referenciaCatastral||""; exp.datos.fechaVisita=normFecha(s.fechaVisita);
     exp.datos.observaciones=s.observaciones||"";
 
-    // Gestión municipio: si no se reconoce, guardar como Otro + custom
     const muni=matchMuni(s.municipio);
     if(muni.startsWith("__custom__:")){
       exp.datos.municipio="Otro";
@@ -339,7 +332,6 @@ function rellenarFormDatos(exp){
   const sel=$("f-muni"); sel.innerHTML=MUNIS.map(m=>`<option value="${esc(m)}"${m===d.municipio?" selected":""}>${esc(m||"— seleccionar —")}</option>`).join("");
   $("f-cp").value=d.codigoPostal||""; $("f-refcat").value=d.referenciaCatastral||"";
   $("f-fechavisita").value=d.fechaVisita||""; $("f-obs").value=d.observaciones||"";
-  // Municipio custom
   if(d.municipio==="Otro"){
     $("f-muni-custom-row").style.display="block";
     $("f-muni-custom-inp").value=d.municipioCustom||"";
@@ -359,7 +351,6 @@ function leerFormDatos(exp){
   exp.datos.observaciones=$("f-obs").value.trim();
 }
 
-// Cuando cambia el select de municipio
 function onCambiarMuni(){
   const val=$("f-muni").value;
   const row=$("f-muni-custom-row");
@@ -396,13 +387,11 @@ function rellenarChecklist(exp){
   $("c-acsTipo").value=c.acsTipo||""; $("c-acsModalidad").value=c.acsModalidad||"";
   $("c-acsAcum").value=c.acsAcum||""; $("c-acsComb").value=c.acsComb||"";
   $("c-acsMixta").checked=!!c.acsMixta;
-  $("c-renPaneles").checked=!!c.renPaneles; $("c-renPotencia").value=c.renPotencia||""; $("c-renAnyo").value=c.renAnyo||"";
+  $("c-renPaneles").checked=!!c.renPaneles; $("c-renPotencia").value=c.renPotencia||"";
   $("c-ren-row").style.display=c.renPaneles?"block":"none";
   $("c-obs").value=c.observaciones||"";
-  // Firma
   $("c-firmaReq").checked = !!c.firmaReq;
   $("firma-box").style.display = c.firmaReq ? "block" : "none";
-  // Pintar firma guardada en el canvas si existe
   if(c.firmaReq){
     setTimeout(() => {
       initFirmaCanvas();
@@ -434,10 +423,9 @@ function leerChecklist(exp){
   c.refAntig=$("c-refAntig").value; c.refPct=$("c-refPct").value;
   c.acsTipo=$("c-acsTipo").value; c.acsModalidad=$("c-acsModalidad").value;
   c.acsAcum=$("c-acsAcum").value; c.acsComb=$("c-acsComb").value; c.acsMixta=$("c-acsMixta").checked;
-  c.renPaneles=$("c-renPaneles").checked; c.renPotencia=$("c-renPotencia").value; c.renAnyo=$("c-renAnyo").value;
+  c.renPaneles=$("c-renPaneles").checked; c.renPotencia=$("c-renPotencia").value;
   c.firmaReq=$("c-firmaReq").checked;
   c.observaciones=$("c-obs").value.trim();
-  // Firma: si está activa, guardar contenido del canvas
   if(c.firmaReq && state.firma.hasDrawn){
     const cv=$("firma-canvas");
     if(cv) exp.fotos.firma = cv.toDataURL("image/png");
@@ -459,15 +447,14 @@ function toggleFirma(){
 function initFirmaCanvas(){
   const cv=$("firma-canvas");
   if(!cv) return;
-  // Dimensionar canvas a píxeles reales
   const rect = cv.getBoundingClientRect();
-  if(rect.width === 0) return; // no visible aún
+  if(rect.width === 0) return;
   const dpr = window.devicePixelRatio || 1;
   cv.width = rect.width * dpr;
   cv.height = rect.height * dpr;
   const ctx = cv.getContext("2d");
   ctx.scale(dpr, dpr);
-  ctx.strokeStyle = "#0A2A6B"; // azul oscuro tipo boli
+  ctx.strokeStyle = "#0A2A6B";
   ctx.lineWidth = 2.2;
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
@@ -476,7 +463,6 @@ function initFirmaCanvas(){
   state.firma.hasDrawn = false;
   $("firma-info").textContent = "—";
 
-  // Eventos unificados para mouse + touch + pen
   cv.onpointerdown = (e)=>{
     e.preventDefault();
     state.firma.drawing = true;
@@ -526,10 +512,64 @@ function pintarFirmaEnCanvas(dataUrl){
   img.src = dataUrl;
 }
 
-// ---------- Fotos ----------
-function setupFotoInput(btnId,inputId,key){
-  $(btnId).onclick=()=>$(inputId).click();
-  $(inputId).onchange=async (e)=>{
+// ---------- FOTOS CON CÁMARA (getUserMedia) ----------
+async function abrirCamara(key, title){
+  state.camera.activeKey = key;
+  const modal = $("modal-camera");
+  const video = $("camera-video");
+  const titleEl = $("camera-title");
+  titleEl.textContent = title || "Capturar foto";
+  modal.style.display = "flex";
+
+  try{
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: "environment", width: {ideal: 1920}, height: {ideal: 1080} }
+    });
+    state.camera.stream = stream;
+    video.srcObject = stream;
+    video.play();
+  }catch(err){
+    cerrarCamara();
+    toast("No se pudo acceder a la cámara: " + err.message);
+  }
+}
+
+function cerrarCamara(){
+  const modal = $("modal-camera");
+  const video = $("camera-video");
+  if(state.camera.stream){
+    state.camera.stream.getTracks().forEach(t => t.stop());
+    state.camera.stream = null;
+  }
+  video.srcObject = null;
+  modal.style.display = "none";
+  state.camera.activeKey = null;
+}
+
+async function capturarFoto(){
+  const video = $("camera-video");
+  const canvas = $("camera-canvas");
+  const ctx = canvas.getContext("2d");
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  ctx.drawImage(video, 0, 0);
+  const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
+  
+  if(!state.expCurrent) return;
+  const key = state.camera.activeKey;
+  if(key){
+    state.expCurrent.fotos[key] = dataUrl;
+    pintarFoto(key, dataUrl);
+    await guardarExpedienteLocal(state.expCurrent);
+    toast("Foto guardada");
+  }
+  cerrarCamara();
+}
+
+// ---------- Croquis (2 botones) ----------
+function setupCroquisFile(inputId, key){
+  const inp = $(inputId);
+  inp.onchange = async (e)=>{
     const f=e.target.files[0]; if(!f) return;
     if(f.type==="application/pdf"){
       const r=new FileReader();
@@ -547,7 +587,6 @@ function setupFotoInput(btnId,inputId,key){
     state.expCurrent.fotos[key]=url; pintarFoto(key,url);
     await guardarExpedienteLocal(state.expCurrent);
     toast("Imagen guardada");
-    // Limpiar valor del input para que el onchange funcione si se elige la misma foto otra vez
     e.target.value = "";
   };
 }
@@ -668,7 +707,6 @@ async function generateChecklistPDF(exp){
   if(c.renPaneles){
     row("Paneles solares","Sí");
     row("Potencia instalada",c.renPotencia?c.renPotencia+" kW":"");
-    row("Año instalación",c.renAnyo);
   } else{ row("Paneles solares","No dispone"); }
   y+=2;
 
@@ -680,7 +718,6 @@ async function generateChecklistPDF(exp){
     y+=5*lines.length + 2;
   }
 
-  // Firma
   if(c.firmaReq && exp.fotos.firma){
     if(y>220){ doc.addPage(); y=20; }
     title("FIRMA DEL TITULAR");
@@ -732,7 +769,7 @@ INSTALACIONES
 - Calefacción: ${c.calTipo||"—"}${c.calTipo&&c.calTipo!=="No tiene instalada"?` · ${c.calComb||""} · ${c.calDist||""} · ${c.calAntig||""} · ${c.calPct||0}% vivienda`:""}
 - Refrigeración: ${c.refTipo||"—"}${c.refTipo&&c.refTipo!=="No tiene instalada"?` · ${c.refComb||""} · ${c.refAntig||""} · ${c.refPct||0}% vivienda`:""}
 - ACS: ${c.acsTipo||"—"}${c.acsModalidad?" · "+c.acsModalidad:""}${c.acsAcum?" · "+c.acsAcum:""}${c.acsComb?" · "+c.acsComb:""}${c.acsMixta?" · mixta con calefacción":""}
-- Renovables: ${c.renPaneles?"Paneles "+(c.renPotencia||"?")+" kW ("+(c.renAnyo||"?")+")":"No dispone"}
+- Renovables: ${c.renPaneles?"Paneles "+(c.renPotencia||"?")+" kW":"No dispone"}
 
 OBSERVACIONES
 ${c.observaciones||"—"}
@@ -849,7 +886,7 @@ async function testConexion(){
 
 // ---------- Init ----------
 async function init(){
-  if("serviceWorker" in navigator){ try{ await navigator.serviceWorker.register("sw.js?v=7"); }catch(e){} }
+  if("serviceWorker" in navigator){ try{ await navigator.serviceWorker.register("sw.js?v=8"); }catch(e){} }
   document.querySelectorAll("[data-go]").forEach(b=>{ b.onclick=()=>go(b.getAttribute("data-go")); });
   document.querySelectorAll(".tab").forEach(t=>{ t.onclick=()=>{
     document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));
@@ -871,7 +908,6 @@ async function init(){
     await guardarExpedienteLocal(state.expCurrent);
     pushExpediente(state.expCurrent).catch(()=>{});
     go("checklist");
-    // Inicializar canvas firma si está activada
     if(state.expCurrent.checklist.firmaReq){
       setTimeout(()=>{
         initFirmaCanvas();
@@ -903,13 +939,22 @@ async function init(){
   $("c-firmaReq").onchange=toggleFirma;
   $("btn-firma-clear").onclick=clearFirma;
 
-  // Cambio de municipio
   $("f-muni").onchange=onCambiarMuni;
 
-  setupFotoInput("btn-foto-fachada","inp-fachada","fachada");
-  setupFotoInput("btn-foto-detalle","inp-detalle","detalle");
-  setupFotoInput("btn-croquis-1","inp-croq1","croq1");
-  setupFotoInput("btn-croquis-2","inp-croq2","croq2");
+  // Fotos con cámara (getUserMedia)
+  $("btn-foto-fachada").onclick=()=>abrirCamara("fachada", "Foto de fachada");
+  $("btn-foto-detalle").onclick=()=>abrirCamara("detalle", "Foto de detalle");
+  $("camera-cancel").onclick=cerrarCamara;
+  $("camera-capture").onclick=capturarFoto;
+
+  // Croquis (2 botones)
+  $("btn-croquis1-foto").onclick=()=>abrirCamara("croq1", "Croquis 1");
+  $("btn-croquis1-file").onclick=()=>$("inp-croq1").click();
+  setupCroquisFile("inp-croq1", "croq1");
+  
+  $("btn-croquis2-foto").onclick=()=>abrirCamara("croq2", "Croquis 2");
+  $("btn-croquis2-file").onclick=()=>$("inp-croq2").click();
+  setupCroquisFile("inp-croq2", "croq2");
 
   $("btn-save-cfg").onclick=()=>guardarCfgUI();
   $("btn-sync-now").onclick=()=>sincronizar();

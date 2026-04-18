@@ -9,7 +9,7 @@
 <title>CEE Visitas · Joanfe Ribes</title>
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
-<link rel="stylesheet" href="style.css?v=7">
+<link rel="stylesheet" href="style.css?v=8">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
@@ -18,7 +18,7 @@
 <div class="toast" id="toast"></div>
 <div class="sync-bar" id="sync-bar"><span id="sync-text">Sincronizando…</span></div>
 
-<!-- Modal municipio personalizado -->
+<!-- Modal municipio -->
 <div class="modal" id="modal-muni" style="display:none">
   <div class="modal-box">
     <h3>Municipio personalizado</h3>
@@ -27,6 +27,19 @@
     <div class="modal-btns">
       <button class="btn-secondary" id="muni-cancel">Cancelar</button>
       <button class="btn-primary" id="muni-ok">Aceptar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal cámara -->
+<div class="modal" id="modal-camera" style="display:none">
+  <div class="modal-box" style="max-width:600px">
+    <h3 id="camera-title">Capturar foto</h3>
+    <video id="camera-video" autoplay playsinline style="width:100%;border-radius:8px;background:#000"></video>
+    <canvas id="camera-canvas" style="display:none"></canvas>
+    <div class="modal-btns" style="margin-top:12px">
+      <button class="btn-secondary" id="camera-cancel">Cancelar</button>
+      <button class="btn-primary" id="camera-capture">📷 Capturar</button>
     </div>
   </div>
 </div>
@@ -54,7 +67,7 @@
   </div>
 </section>
 
-<!-- NUEVO -->
+<!-- NUEVO (sin OCR) -->
 <section class="screen" id="screen-nuevo">
   <div class="bar"><button class="back" data-go="home">‹</button><span>Nuevo expediente</span></div>
   <div class="content">
@@ -66,10 +79,6 @@
     <button class="card-btn" id="btn-origen-manual">
       <div class="card-title">Manual</div>
       <div class="card-sub">Introducir los datos a mano</div>
-    </button>
-    <button class="card-btn disabled">
-      <div class="card-title">OCR (próximamente)</div>
-      <div class="card-sub">Leer DNI o ref. catastral con cámara</div>
     </button>
   </div>
 </section>
@@ -326,10 +335,8 @@
         <label for="c-renPaneles" style="margin:0">Dispone de paneles solares</label>
       </div>
       <div id="c-ren-row" style="display:none">
-        <div class="row-2">
-          <div><label>Potencia instalada (kW)</label><input type="number" id="c-renPotencia" step="0.1" placeholder="3.5"></div>
-          <div><label>Año instalación</label><input type="number" id="c-renAnyo" placeholder="2022"></div>
-        </div>
+        <label>Potencia instalada (kW)</label>
+        <input type="number" id="c-renPotencia" step="0.1" placeholder="3.5">
       </div>
 
       <h3 class="h3">Observaciones</h3>
@@ -337,34 +344,32 @@
 
       <h3 class="h3">Foto de fachada</h3>
       <div class="photo-row">
-        <button class="btn-secondary" id="btn-foto-fachada">📷 Hacer/elegir foto</button>
+        <button class="btn-secondary" id="btn-foto-fachada">📷 Abrir cámara</button>
         <span id="fachada-info" class="muted">—</span>
       </div>
       <img id="fachada-preview" class="preview" style="display:none">
 
       <h3 class="h3">Foto de detalle (opcional)</h3>
       <div class="photo-row">
-        <button class="btn-secondary" id="btn-foto-detalle">📷 Hacer/elegir foto</button>
+        <button class="btn-secondary" id="btn-foto-detalle">📷 Abrir cámara</button>
         <span id="detalle-info" class="muted">—</span>
       </div>
       <img id="detalle-preview" class="preview" style="display:none">
 
       <h3 class="h3">Croquis (hasta 2)</h3>
       <div class="photo-row">
-        <button class="btn-secondary" id="btn-croquis-1">📐 Croquis 1</button>
+        <button class="btn-secondary" id="btn-croquis1-foto">📷 Hacer foto</button>
+        <button class="btn-secondary" id="btn-croquis1-file">📁 Subir archivo</button>
         <span id="croq1-info" class="muted">—</span>
       </div>
       <img id="croq1-preview" class="preview" style="display:none">
       <div class="photo-row">
-        <button class="btn-secondary" id="btn-croquis-2">📐 Croquis 2</button>
+        <button class="btn-secondary" id="btn-croquis2-foto">📷 Hacer foto</button>
+        <button class="btn-secondary" id="btn-croquis2-file">📁 Subir archivo</button>
         <span id="croq2-info" class="muted">—</span>
       </div>
       <img id="croq2-preview" class="preview" style="display:none">
-      <p class="muted tiny">Los croquis admiten foto o PDF escaneado (Adobe Scan, CamScanner…).</p>
 
-      <!-- Inputs ocultos SIN capture forzado para que funcione en Surface -->
-      <input type="file" id="inp-fachada" accept="image/*" hidden>
-      <input type="file" id="inp-detalle" accept="image/*" hidden>
       <input type="file" id="inp-croq1" accept="image/*,application/pdf" hidden>
       <input type="file" id="inp-croq2" accept="image/*,application/pdf" hidden>
 
@@ -438,6 +443,6 @@
 </section>
 
 </div>
-<script src="app.js?v=7"></script>
+<script src="app.js?v=8"></script>
 </body>
 </html>
