@@ -102,3 +102,8 @@ body{padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bot
 .modal-box input{width:100%;padding:10px 12px;border:1px solid #d0d5d8;border-radius:8px;font-size:15px;margin-top:8px;box-sizing:border-box}
 .modal-btns{display:flex;gap:10px;margin-top:14px}
 .modal-btns button{flex:1;margin:0 !important}
+
+/* Portada home personalizada */
+.home-header{text-align:center;padding:30px 20px 20px;background:linear-gradient(135deg,#4A8A80 0%,#7AADA3 100%);margin:-20px -20px 20px;border-radius:0 0 20px 20px}
+.app-title{font-size:26px;font-weight:700;color:#fff;margin:0 0 8px;letter-spacing:-0.5px}
+.app-subtitle{font-size:13px;color:rgba(255,255,255,0.92);margin:0;line-height:1.5;font-weight:500}

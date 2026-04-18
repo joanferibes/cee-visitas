@@ -1,12 +1,13 @@
 /* ============================================================================
- * CEE VISITAS · PWA v8 DEFINITIVO
+ * CEE VISITAS · PWA v8 FINAL
  * Joanfe Ribes Oficina Tècnica
  * ---------------------------------------------------------------------------
- * CAMBIOS sobre v7:
- *  - SIN opción OCR (solo formulario web y manual)
- *  - Fotos fachada/detalle: getUserMedia (abre cámara directa en Surface/móvil)
- *  - Croquis: 2 botones separados (Hacer foto / Subir archivo)
- *  - Renovables: SIN campo "Año instalación"
+ * VERSIÓN FINAL:
+ *  - Portada personalizada "CEE Visitas · JOANFE RIBES Oficina Técnica"
+ *  - Guardar expediente SIN salir (te quedas en checklist)
+ *  - Borrador Gmail mejorado con ventana emergente visible
+ *  - getUserMedia para fotos (funciona en Surface)
+ *  - Sin año renovables
  * ========================================================================= */
 (function(){
 "use strict";
@@ -794,7 +795,9 @@ async function crearBorradorGmail(){
   try{
     const pdfDataUrl=await generateChecklistPDF(exp);
     showSync("Creando borrador en Gmail…");
-    await enviarBorradorPostForm({
+    
+    const url=await backendUrl();
+    const payload = JSON.stringify({
       to, subject, body,
       numExp:exp.numExp||"sin",
       direccion:exp.datos.direccion||"",
@@ -805,57 +808,42 @@ async function crearBorradorGmail(){
       croquis2:exp.fotos.croq2||"",
       firma:exp.fotos.firma||""
     });
+    
+    // Crear formulario y ventana emergente
+    const form = document.createElement("form");
+    form.method = "POST";
+    form.action = url;
+    form.target = "gmail_draft_window";
+    
+    const inp = document.createElement("input");
+    inp.type = "hidden";
+    inp.name = "payload";
+    inp.value = payload;
+    form.appendChild(inp);
+    
+    document.body.appendChild(form);
+    
+    // Abrir ventana emergente
+    const w = window.open("", "gmail_draft_window", "width=600,height=400,left=100,top=100");
+    if(w){
+      w.document.write('<html><body style="font-family:sans-serif;text-align:center;padding:40px"><p style="color:#4A8A80;font-size:18px">Creando borrador en Gmail...</p><p style="color:#888;font-size:14px">Esta ventana se cerrará automáticamente.</p></body></html>');
+    }
+    
+    form.submit();
+    document.body.removeChild(form);
+    
     hideSync();
     toast("✓ Borrador creado en Gmail · revisa borradores");
     exp.estado="enviado";
     await guardarExpedienteLocal(exp);
     pushExpediente(exp).catch(()=>{});
     if(exp.solicitudId) apiActualizarEstadoSolicitud(exp.solicitudId,"enviado").catch(()=>{});
-    setTimeout(()=>{ go("home"); renderHome(); },1800);
+    
+    // NO salimos, nos quedamos en la pantalla de email
   }catch(e){
     hideSync();
     toast("Error: "+e.message);
   }
-}
-
-function enviarBorradorPostForm(payload){
-  return new Promise(async (resolve,reject)=>{
-    const url=await backendUrl();
-    const iframeName="gas_iframe_"+Date.now();
-    const iframe=document.createElement("iframe");
-    iframe.name=iframeName; iframe.style.display="none";
-    document.body.appendChild(iframe);
-
-    const form=document.createElement("form");
-    form.method="POST"; form.action=url; form.target=iframeName;
-    form.enctype="application/x-www-form-urlencoded";
-
-    const inp=document.createElement("input");
-    inp.type="hidden"; inp.name="payload"; inp.value=JSON.stringify(payload);
-    form.appendChild(inp);
-    document.body.appendChild(form);
-
-    let done=false;
-    const timer=setTimeout(()=>{
-      if(done) return; done=true;
-      try{ document.body.removeChild(iframe); document.body.removeChild(form); }catch(e){}
-      resolve(true);
-    },10000);
-
-    iframe.onload=()=>{
-      if(done) return; done=true;
-      clearTimeout(timer);
-      try{ document.body.removeChild(iframe); document.body.removeChild(form); }catch(e){}
-      resolve(true);
-    };
-    iframe.onerror=()=>{
-      if(done) return; done=true;
-      clearTimeout(timer);
-      try{ document.body.removeChild(iframe); document.body.removeChild(form); }catch(e){}
-      reject(new Error("No se pudo enviar al servidor"));
-    };
-    form.submit();
-  });
 }
 
 // ---------- Config UI ----------
@@ -886,7 +874,7 @@ async function testConexion(){
 
 // ---------- Init ----------
 async function init(){
-  if("serviceWorker" in navigator){ try{ await navigator.serviceWorker.register("sw.js?v=8"); }catch(e){} }
+  if("serviceWorker" in navigator){ try{ await navigator.serviceWorker.register("sw.js?v=8f"); }catch(e){} }
   document.querySelectorAll("[data-go]").forEach(b=>{ b.onclick=()=>go(b.getAttribute("data-go")); });
   document.querySelectorAll(".tab").forEach(t=>{ t.onclick=()=>{
     document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));
@@ -915,6 +903,8 @@ async function init(){
       },100);
     }
   };
+  
+  // NUEVO: Guardar SIN salir del expediente
   $("btn-guardar").onclick=async()=>{
     if(!state.expCurrent) return;
     leerChecklist(state.expCurrent);
@@ -922,8 +912,10 @@ async function init(){
     await guardarExpedienteLocal(state.expCurrent);
     const ok=await pushExpediente(state.expCurrent);
     toast(ok?"Guardado ✓":"Guardado en local (↑ pendiente)");
-    renderHome(); go("home");
+    renderHome(); 
+    // NO hacemos go("home") - nos quedamos en checklist
   };
+  
   $("btn-enviar").onclick=async()=>{
     if(!state.expCurrent) return;
     leerChecklist(state.expCurrent);
@@ -941,13 +933,11 @@ async function init(){
 
   $("f-muni").onchange=onCambiarMuni;
 
-  // Fotos con cámara (getUserMedia)
   $("btn-foto-fachada").onclick=()=>abrirCamara("fachada", "Foto de fachada");
   $("btn-foto-detalle").onclick=()=>abrirCamara("detalle", "Foto de detalle");
   $("camera-cancel").onclick=cerrarCamara;
   $("camera-capture").onclick=capturarFoto;
 
-  // Croquis (2 botones)
   $("btn-croquis1-foto").onclick=()=>abrirCamara("croq1", "Croquis 1");
   $("btn-croquis1-file").onclick=()=>$("inp-croq1").click();
   setupCroquisFile("inp-croq1", "croq1");

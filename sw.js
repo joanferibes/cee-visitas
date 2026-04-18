@@ -1,10 +1,10 @@
-// CEE Visitas — Service Worker v8
-const CACHE_NAME = "cee-visitas-v8";
+// CEE Visitas — Service Worker v8 FINAL
+const CACHE_NAME = "cee-visitas-v8f";
 const BASE = self.location.pathname.replace("sw.js", "");
 
 const urlsToCache = [
   BASE, BASE + "index.html",
-  BASE + "style.css?v=8", BASE + "app.js?v=8",
+  BASE + "style.css?v=8f", BASE + "app.js?v=8f",
   BASE + "manifest.json",
   "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"
 ];

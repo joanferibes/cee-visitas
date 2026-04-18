@@ -9,7 +9,7 @@
 <title>CEE Visitas · Joanfe Ribes</title>
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
-<link rel="stylesheet" href="style.css?v=8">
+<link rel="stylesheet" href="style.css?v=8f">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
@@ -51,7 +51,10 @@
     <span class="status"><span class="dot" id="status-dot"></span><span id="status-text">…</span></span>
   </div>
   <div class="content">
-    <h1 class="h1">Expedientes</h1>
+    <div class="home-header">
+      <h1 class="app-title">CEE Visitas</h1>
+      <p class="app-subtitle">JOANFE RIBES<br>Oficina Técnica</p>
+    </div>
     <div class="tabs">
       <button class="tab active" data-tab="pendiente">Pendientes <span class="count" id="cnt-pend">0</span></button>
       <button class="tab" data-tab="visitado">Visitados <span class="count" id="cnt-vis">0</span></button>
@@ -67,7 +70,7 @@
   </div>
 </section>
 
-<!-- NUEVO (sin OCR) -->
+<!-- NUEVO -->
 <section class="screen" id="screen-nuevo">
   <div class="bar"><button class="back" data-go="home">‹</button><span>Nuevo expediente</span></div>
   <div class="content">
@@ -443,6 +446,6 @@
 </section>
 
 </div>
-<script src="app.js?v=8"></script>
+<script src="app.js?v=8f"></script>
 </body>
 </html>
