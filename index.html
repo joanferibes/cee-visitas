@@ -9,8 +9,19 @@
 <title>CEE Visitas · Joanfe Ribes</title>
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
-<link rel="stylesheet" href="style.css?v=8f">
+<link rel="stylesheet" href="style.css?v=9">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+/* Botón eliminar dentro de cada item del listado */
+.btn-delete-exp {
+  background:transparent; border:none; cursor:pointer;
+  font-size:18px; padding:4px 8px; color:#A32D2D;
+  border-radius:4px; transition:background 0.15s;
+}
+.btn-delete-exp:hover { background:rgba(163,45,45,0.1); }
+.li-meta { display:flex; justify-content:space-between; align-items:center; gap:8px; }
+.li-meta-right { display:flex; align-items:center; gap:6px; }
+</style>
 </head>
 <body>
 <div class="app">
@@ -135,6 +146,8 @@
       <label>Observaciones</label>
       <textarea id="f-obs" rows="3"></textarea>
     </div>
+    <!-- NUEVO: Botón para guardar SIN cambiar estado ni avanzar -->
+    <button class="btn-secondary" id="btn-guardar-datos" style="margin-bottom:8px">💾 Guardar cambios</button>
     <button class="btn-primary" id="btn-ir-checklist">Siguiente: Checklist ›</button>
   </div>
 </section>
@@ -390,11 +403,16 @@
           <button class="btn-secondary" id="btn-firma-clear" type="button">Borrar</button>
           <span id="firma-info" class="muted">—</span>
         </div>
+        <!-- NUEVO: Botón para generar impresos firmados -->
+        <button class="btn-primary" id="btn-generar-impresos" type="button" style="margin-top:12px;background:#0A2A6B">
+          📄 Generar impresos firmados y enviar
+        </button>
+        <p class="muted tiny" style="margin-top:6px">Genera el Acta y la Delegación con la firma del propietario y los envía a joanferibes@gmail.com</p>
       </div>
 
     </div>
 
-    <button class="btn-primary" id="btn-guardar">Guardar expediente</button>
+    <button class="btn-primary" id="btn-guardar">Guardar expediente (marca como visitado)</button>
     <button class="btn-secondary" id="btn-enviar">Preparar email al colaborador ›</button>
   </div>
 </section>
@@ -446,6 +464,6 @@
 </section>
 
 </div>
-<script src="app.js?v=8f"></script>
+<script src="app.js?v=9"></script>
 </body>
 </html>
