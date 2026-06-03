@@ -1,13 +1,12 @@
 /* ============================================================================
- * CEE VISITAS · PWA v8 FINAL
+ * CEE VISITAS · PWA v9
  * Joanfe Ribes Oficina Tècnica
  * ---------------------------------------------------------------------------
- * VERSIÓN FINAL:
- *  - Portada personalizada "CEE Visitas · JOANFE RIBES Oficina Técnica"
- *  - Guardar expediente SIN salir (te quedas en checklist)
- *  - Borrador Gmail mejorado con ventana emergente visible
- *  - getUserMedia para fotos (funciona en Surface)
- *  - Sin año renovables
+ * NOVEDADES v9:
+ *  - Botón ELIMINAR (papelera) en cada item del listado (solo borra local)
+ *  - Botón "Guardar cambios" en pantalla Datos (no cambia estado)
+ *  - Botón "Generar impresos firmados" debajo de la firma
+ *  - Anti-duplicados al importar y al sincronizar
  * ========================================================================= */
 (function(){
 "use strict";
@@ -50,6 +49,7 @@ function openDB(){ return new Promise((res,rej)=>{
 async function dbGetAll(s){ const db=await openDB(); return new Promise((r,j)=>{ const q=db.transaction(s,"readonly").objectStore(s).getAll(); q.onsuccess=()=>r(q.result||[]); q.onerror=()=>j(q.error); }); }
 async function dbGet(s,k){ const db=await openDB(); return new Promise((r,j)=>{ const q=db.transaction(s,"readonly").objectStore(s).get(k); q.onsuccess=()=>r(q.result||null); q.onerror=()=>j(q.error); }); }
 async function dbPut(s,o){ const db=await openDB(); return new Promise((r,j)=>{ const tx=db.transaction(s,"readwrite"); tx.objectStore(s).put(o); tx.oncomplete=()=>r(); tx.onerror=()=>j(tx.error); }); }
+async function dbDelete(s,k){ const db=await openDB(); return new Promise((r,j)=>{ const tx=db.transaction(s,"readwrite"); tx.objectStore(s).delete(k); tx.oncomplete=()=>r(); tx.onerror=()=>j(tx.error); }); }
 async function dbClear(s){ const db=await openDB(); return new Promise((r,j)=>{ const tx=db.transaction(s,"readwrite"); tx.objectStore(s).clear(); tx.oncomplete=()=>r(); tx.onerror=()=>j(tx.error); }); }
 
 // ---------- JSONP ----------
@@ -84,7 +84,7 @@ async function apiGuardarExpediente(id,datos,estado){
 async function getCfg(){
   const c=await dbGet("config","main");
   return c||{ key:"main", scriptUrl:DEFAULT_SCRIPT_URL, emailColab:"",
-    firma:"Un saludo,\n\nJuan Felipe Ribes Aranda\nArquitecto Técnico · col. 3.184\nJoanfe Ribes Oficina Tècnica\nTel. 605 875 899\nadministracion@joanferibes.com",
+    firma:"Un saludo,\n\nJuan Felipe Ribes Aranda\nArquitecto Técnico · col. 3.184\nJoanfe Ribes Oficina Tècnica\nTel. 605 875 899\njoanferibes@gmail.com",
     lastSync:"" };
 }
 async function saveCfg(c){ c.key="main"; await dbPut("config",c); }
@@ -92,7 +92,8 @@ async function saveCfg(c){ c.key="main"; await dbPut("config",c); }
 // ---------- Estado ----------
 const state={currentTab:"pendiente", expCurrent:null, online:navigator.onLine,
   firma:{ctx:null, drawing:false, hasDrawn:false},
-  camera:{stream:null, activeKey:null}};
+  camera:{stream:null, activeKey:null},
+  importing:false};
 
 // ---------- Helpers ----------
 const $=(id)=>document.getElementById(id);
@@ -179,6 +180,23 @@ async function pushExpediente(exp){
   }catch(e){ return false; }
 }
 
+// ---------- NUEVO: Eliminar expediente (solo local) ----------
+async function eliminarExpedienteLocal(id){
+  const exp = await dbGet("expedientes", id);
+  if(!exp) return;
+  const dir = exp.datos.direccion || "(sin dirección)";
+  const nombre = exp.datos.nombre || "";
+  const mensaje = `¿Eliminar de este dispositivo?\n\n"${dir}"\n${nombre}\n\nLos datos del servidor se mantienen.`;
+  if(!confirm(mensaje)) return;
+  try{
+    await dbDelete("expedientes", id);
+    toast("Eliminado");
+    renderHome();
+  }catch(e){
+    toast("Error al eliminar");
+  }
+}
+
 // ---------- Sincronización ----------
 async function sincronizar(){
   showSync("Sincronizando…");
@@ -191,9 +209,20 @@ async function sincronizar(){
     const res=await apiListarExpedientes();
     let pull=0;
     if(res && res.status==="ok" && Array.isArray(res.expedientes)){
+      // Recargar la lista local después de los pushes
+      const todosActualizados = await dbGetAll("expedientes");
+      
       for(const r of res.expedientes){
-        const local=await dbGet("expedientes",r.id);
+        // Buscar por ID exacto
+        let local = todosActualizados.find(e => e.id === r.id);
+        
+        // ANTI-DUPLICADOS: si no existe por ID pero sí por solicitudId, usar el local
+        if(!local && r.datos && r.datos.solicitudId){
+          local = todosActualizados.find(e => e.solicitudId && e.solicitudId === r.datos.solicitudId);
+        }
+        
         if(!local){
+          // Nuevo expediente desde servidor
           const exp=nuevoExpedienteVacio();
           exp.id=r.id; exp.fechaActualizacion=r.fechaActualizacion||exp.fechaActualizacion;
           exp.estado=r.estado||"pendiente";
@@ -253,8 +282,24 @@ async function renderHome(){
     const fechaStr=exp.datos.fechaVisita?"Visita: "+exp.datos.fechaVisita:("Últ. "+formatFecha(exp.fechaActualizacion));
     const pSync=exp.pendienteSync?" · ↑":"";
     const item=document.createElement("div"); item.className="list-item";
-    item.innerHTML=`<div class="li-title">${esc(dir)}${esc(muni)}</div><div class="li-sub">${esc(nombre)}</div><div class="li-meta"><span>${esc(numExp+fechaStr+pSync)}</span><span class="badge ${badge}">${esc(exp.estado)}</span></div>`;
+    item.innerHTML=`
+      <div class="li-title">${esc(dir)}${esc(muni)}</div>
+      <div class="li-sub">${esc(nombre)}</div>
+      <div class="li-meta">
+        <span>${esc(numExp+fechaStr+pSync)}</span>
+        <div class="li-meta-right">
+          <span class="badge ${badge}">${esc(exp.estado)}</span>
+          <button class="btn-delete-exp" data-id="${esc(exp.id)}" title="Eliminar de este dispositivo" type="button">🗑</button>
+        </div>
+      </div>`;
     item.onclick=()=>abrirExpediente(exp.id);
+    const btnDel = item.querySelector(".btn-delete-exp");
+    if(btnDel){
+      btnDel.onclick = (ev)=>{
+        ev.stopPropagation();
+        eliminarExpedienteLocal(exp.id);
+      };
+    }
     cont.appendChild(item);
   }
 }
@@ -289,6 +334,10 @@ async function cargarSolicitudes(){
 }
 
 async function importarSolicitud(id){
+  // ANTI-DUPLICADOS: si ya estamos importando, no hacer nada
+  if(state.importing){ toast("Espera… ya se está importando"); return; }
+  state.importing = true;
+  
   toast("Importando…");
   try{
     const res=await apiDetalleSolicitud(id);
@@ -320,7 +369,10 @@ async function importarSolicitud(id){
     $("datos-title").textContent=exp.datos.direccion||"Expediente";
     go("datos");
     toast("Importada ✓");
-  }catch(e){ toast("Error: "+e.message); }
+  }catch(e){ toast("Error: "+e.message);
+  } finally {
+    state.importing = false;
+  }
 }
 
 // ---------- Datos ----------
@@ -513,7 +565,7 @@ function pintarFirmaEnCanvas(dataUrl){
   img.src = dataUrl;
 }
 
-// ---------- FOTOS CON CÁMARA (getUserMedia) ----------
+// ---------- FOTOS CON CÁMARA ----------
 async function abrirCamara(key, title){
   state.camera.activeKey = key;
   const modal = $("modal-camera");
@@ -567,7 +619,7 @@ async function capturarFoto(){
   cerrarCamara();
 }
 
-// ---------- Croquis (2 botones) ----------
+// ---------- Croquis ----------
 function setupCroquisFile(inputId, key){
   const inp = $(inputId);
   inp.onchange = async (e)=>{
@@ -733,6 +785,61 @@ async function generateChecklistPDF(exp){
   return doc.output("datauristring");
 }
 
+// ---------- NUEVO: Generar impresos firmados ----------
+async function generarImpresosFirmados(){
+  if(!state.expCurrent) return;
+  const exp = state.expCurrent;
+  
+  // Leer datos actuales del checklist
+  leerChecklist(exp);
+  
+  // Validaciones
+  if(!exp.checklist.firmaReq){ toast("Activa primero 'Necesidad de firma del titular'"); return; }
+  if(!exp.fotos.firma){ toast("Falta la firma del propietario"); return; }
+  if(!exp.datos.nombre || !exp.datos.numeroDocumento){ toast("Faltan nombre o DNI del propietario"); return; }
+  if(!exp.datos.direccion){ toast("Falta la dirección"); return; }
+  
+  await guardarExpedienteLocal(exp);
+  
+  showSync("Generando impresos firmados…");
+  try{
+    const muniStr = exp.datos.municipio === "Otro" ? (exp.datos.municipioCustom || "") : exp.datos.municipio;
+    const payload = {
+      numExp: exp.numExp || "sin",
+      nombre: exp.datos.nombre,
+      numeroDocumento: exp.datos.numeroDocumento,
+      direccion: exp.datos.direccion,
+      municipio: muniStr,
+      codigoPostal: exp.datos.codigoPostal,
+      referenciaCatastral: exp.datos.referenciaCatastral,
+      telefono: exp.datos.telefono,
+      fechaVisita: exp.datos.fechaVisita,
+      tipoPropiedad: "parte_edificio",
+      firmaPropietario: exp.fotos.firma
+    };
+    
+    const json = JSON.stringify(payload);
+    const b64 = btoa(unescape(encodeURIComponent(json)));
+    const url = await backendUrl();
+    
+    const res = await jsonp(url, {
+      action: "generar_impresos_firmados",
+      data: b64
+    }, 60000);
+    
+    hideSync();
+    
+    if(res && res.status === "ok"){
+      toast("✓ Impresos enviados a joanferibes@gmail.com");
+    } else {
+      toast("Error: " + (res && res.message || "desconocido"));
+    }
+  } catch(e){
+    hideSync();
+    toast("Error: " + e.message);
+  }
+}
+
 // ---------- Envío colaborador ----------
 async function abrirPantallaEmail(){
   if(!state.expCurrent) return;
@@ -809,7 +916,6 @@ async function crearBorradorGmail(){
       firma:exp.fotos.firma||""
     });
     
-    // Crear formulario y ventana emergente
     const form = document.createElement("form");
     form.method = "POST";
     form.action = url;
@@ -823,7 +929,6 @@ async function crearBorradorGmail(){
     
     document.body.appendChild(form);
     
-    // Abrir ventana emergente
     const w = window.open("", "gmail_draft_window", "width=600,height=400,left=100,top=100");
     if(w){
       w.document.write('<html><body style="font-family:sans-serif;text-align:center;padding:40px"><p style="color:#4A8A80;font-size:18px">Creando borrador en Gmail...</p><p style="color:#888;font-size:14px">Esta ventana se cerrará automáticamente.</p></body></html>');
@@ -838,8 +943,6 @@ async function crearBorradorGmail(){
     await guardarExpedienteLocal(exp);
     pushExpediente(exp).catch(()=>{});
     if(exp.solicitudId) apiActualizarEstadoSolicitud(exp.solicitudId,"enviado").catch(()=>{});
-    
-    // NO salimos, nos quedamos en la pantalla de email
   }catch(e){
     hideSync();
     toast("Error: "+e.message);
@@ -874,7 +977,7 @@ async function testConexion(){
 
 // ---------- Init ----------
 async function init(){
-  if("serviceWorker" in navigator){ try{ await navigator.serviceWorker.register("sw.js?v=8f"); }catch(e){} }
+  if("serviceWorker" in navigator){ try{ await navigator.serviceWorker.register("sw.js?v=9"); }catch(e){} }
   document.querySelectorAll("[data-go]").forEach(b=>{ b.onclick=()=>go(b.getAttribute("data-go")); });
   document.querySelectorAll(".tab").forEach(t=>{ t.onclick=()=>{
     document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));
@@ -890,6 +993,18 @@ async function init(){
     $("datos-title").textContent="Nuevo expediente"; go("datos");
   };
   $("btn-importar-reload").onclick=()=>cargarSolicitudes();
+  
+  // NUEVO: Guardar SIN avanzar ni cambiar estado
+  $("btn-guardar-datos").onclick=async()=>{
+    if(!state.expCurrent) return;
+    leerFormDatos(state.expCurrent);
+    await guardarExpedienteLocal(state.expCurrent);
+    const ok=await pushExpediente(state.expCurrent);
+    toast(ok?"Guardado ✓ (sigue en pendientes)":"Guardado en local (↑ pendiente)");
+    renderHome();
+    // NO sale de la pantalla, NO cambia estado
+  };
+  
   $("btn-ir-checklist").onclick=async()=>{
     if(!state.expCurrent) return;
     leerFormDatos(state.expCurrent);
@@ -904,16 +1019,15 @@ async function init(){
     }
   };
   
-  // NUEVO: Guardar SIN salir del expediente
+  // Botón "Guardar expediente" del checklist: SÍ cambia a visitado
   $("btn-guardar").onclick=async()=>{
     if(!state.expCurrent) return;
     leerChecklist(state.expCurrent);
     if(state.expCurrent.estado!=="enviado") state.expCurrent.estado="visitado";
     await guardarExpedienteLocal(state.expCurrent);
     const ok=await pushExpediente(state.expCurrent);
-    toast(ok?"Guardado ✓":"Guardado en local (↑ pendiente)");
-    renderHome(); 
-    // NO hacemos go("home") - nos quedamos en checklist
+    toast(ok?"Guardado ✓ (marcado como visitado)":"Guardado en local (↑ pendiente)");
+    renderHome();
   };
   
   $("btn-enviar").onclick=async()=>{
@@ -923,6 +1037,9 @@ async function init(){
     await abrirPantallaEmail();
   };
   $("btn-crear-borrador").onclick=()=>crearBorradorGmail();
+  
+  // NUEVO: Botón generar impresos firmados
+  $("btn-generar-impresos").onclick=()=>generarImpresosFirmados();
 
   $("c-reforma").onchange=toggleReforma;
   $("c-calTipo").onchange=toggleCalef;
