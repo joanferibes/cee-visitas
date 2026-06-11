@@ -1,4 +1,4 @@
-/* CEE VISITAS · PWA v10 — Joanfe Ribes Oficina Tècnica */
+/* CEE VISITAS · PWA v11 — Joanfe Ribes Oficina Tècnica */
 (function(){
 "use strict";
 
@@ -40,6 +40,7 @@ async function apiGuardarExpediente(id,datos,estado){
   const b64=btoa(unescape(encodeURIComponent(json)));
   return jsonp(await backendUrl(),{action:"guardar_exp",id,datos:b64,estado:estado||"pendiente"},40000);
 }
+async function apiBorrarExpediente(id){ return jsonp(await backendUrl(),{action:"borrar_exp",id}); }
 
 async function getCfg(){
   const c=await dbGet("config","main");
@@ -90,9 +91,33 @@ async function eliminarExpedienteLocal(id){
   if(!exp) return;
   const dir = exp.datos.direccion || "(sin dirección)";
   const nombre = exp.datos.nombre || "";
-  if(!confirm("¿Eliminar de este dispositivo?\n\n\""+dir+"\"\n"+nombre+"\n\nLos datos del servidor se mantienen.")) return;
-  try{ await dbDelete("expedientes", id); toast("Eliminado"); renderHome(); }
-  catch(e){ toast("Error al eliminar"); }
+  
+  // Preguntar dónde borrar
+  const opt = confirm("¿Eliminar este expediente?\n\n\""+dir+"\"\n"+nombre+"\n\nACEPTAR = borrar en TODOS los dispositivos (servidor)\nCANCELAR = solo en este dispositivo");
+  
+  try{
+    if(opt){
+      // Borrar también del servidor
+      try{
+        const res = await apiBorrarExpediente(id);
+        if(res && res.status === "ok"){
+          await dbDelete("expedientes", id);
+          toast("Borrado en todos los dispositivos");
+        } else {
+          toast("No se pudo borrar del servidor: "+(res&&res.message||"?"));
+          return;
+        }
+      }catch(e){
+        toast("Sin conexión, no se pudo borrar del servidor");
+        return;
+      }
+    } else {
+      // Solo borrado local
+      await dbDelete("expedientes", id);
+      toast("Borrado solo en este dispositivo (volverá al sincronizar)");
+    }
+    renderHome();
+  }catch(e){ toast("Error al borrar"); }
 }
 
 async function sincronizar(){
@@ -343,7 +368,7 @@ function initFirmaCanvas(){
   cv.width = rect.width * dpr; cv.height = rect.height * dpr;
   const ctx = cv.getContext("2d");
   ctx.scale(dpr, dpr);
-  ctx.strokeStyle = "#0A2A6B"; ctx.lineWidth = 2.2;
+  ctx.strokeStyle = "#1338BE"; ctx.lineWidth = 4.5;
   ctx.lineCap = "round"; ctx.lineJoin = "round";
   state.firma.ctx = ctx;
   state.firma.drawing = false; state.firma.hasDrawn = false;
@@ -634,7 +659,7 @@ async function testConexion(){
 }
 
 async function init(){
-  if("serviceWorker" in navigator){ try{ await navigator.serviceWorker.register("sw.js?v=10"); }catch(e){} }
+  if("serviceWorker" in navigator){ try{ await navigator.serviceWorker.register("sw.js?v=11"); }catch(e){} }
   document.querySelectorAll("[data-go]").forEach(b=>{ b.onclick=()=>go(b.getAttribute("data-go")); });
   document.querySelectorAll(".tab").forEach(t=>{ t.onclick=()=>{ document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active")); t.classList.add("active"); state.currentTab=t.getAttribute("data-tab"); renderHome(); };});
   $("btn-nuevo").onclick=()=>go("nuevo");

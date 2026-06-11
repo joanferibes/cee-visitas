@@ -1,10 +1,10 @@
-// CEE Visitas Service Worker v10
-const CACHE_NAME = "cee-visitas-v10";
+// CEE Visitas Service Worker v11
+const CACHE_NAME = "cee-visitas-v11";
 const URLS = [
   "./",
   "./index.html",
-  "./app.js?v=10",
-  "./style.css?v=10",
+  "./app.js?v=11",
+  "./style.css?v=11",
   "./manifest.json",
   "./icon-192.png",
   "./icon-512.png",
