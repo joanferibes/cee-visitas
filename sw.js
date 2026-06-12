@@ -1,5 +1,5 @@
-// CEE Visitas Service Worker v11
-const CACHE_NAME = "cee-visitas-v11";
+// CEE Visitas Service Worker v13
+const CACHE_NAME = "cee-visitas-v13";
 const URLS = [
   "./",
   "./index.html",

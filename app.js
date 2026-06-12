@@ -92,32 +92,37 @@ async function eliminarExpedienteLocal(id){
   const dir = exp.datos.direccion || "(sin dirección)";
   const nombre = exp.datos.nombre || "";
   
-  // Preguntar dónde borrar
-  const opt = confirm("¿Eliminar este expediente?\n\n\""+dir+"\"\n"+nombre+"\n\nACEPTAR = borrar en TODOS los dispositivos (servidor)\nCANCELAR = solo en este dispositivo");
+  // Confirmación simplificada
+  if(!confirm("¿Eliminar este expediente?\n\n\""+dir+"\"\n"+nombre)) return;
   
   try{
-    if(opt){
-      // Borrar también del servidor
-      try{
-        const res = await apiBorrarExpediente(id);
-        if(res && res.status === "ok"){
-          await dbDelete("expedientes", id);
-          toast("Borrado en todos los dispositivos");
-        } else {
-          toast("No se pudo borrar del servidor: "+(res&&res.message||"?"));
-          return;
+    // Intentar borrar del servidor (sin bloquear si falla)
+    let servidorOk = false, servidorMsg = "";
+    try{
+      const res = await apiBorrarExpediente(id);
+      if(res && res.status === "ok"){
+        servidorOk = true;
+      } else {
+        servidorMsg = (res && res.message) || "";
+        // Si el servidor dice "no encontrado", igual borramos local (era fantasma local)
+        if(servidorMsg.toLowerCase().indexOf("no encontrado") >= 0 || servidorMsg.toLowerCase().indexOf("not found") >= 0){
+          servidorOk = true; // tratar como ok porque no existe ya
         }
-      }catch(e){
-        toast("Sin conexión, no se pudo borrar del servidor");
-        return;
       }
+    }catch(e){
+      servidorMsg = "Sin conexión";
+    }
+    
+    // SIEMPRE borrar local
+    await dbDelete("expedientes", id);
+    
+    if(servidorOk){
+      toast("Expediente eliminado");
     } else {
-      // Solo borrado local
-      await dbDelete("expedientes", id);
-      toast("Borrado solo en este dispositivo (volverá al sincronizar)");
+      toast("Borrado local (no servidor: "+servidorMsg+")");
     }
     renderHome();
-  }catch(e){ toast("Error al borrar"); }
+  }catch(e){ toast("Error al borrar: "+e.message); }
 }
 
 async function sincronizar(){
